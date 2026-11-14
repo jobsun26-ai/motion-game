@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion Game – ฝึกวิ่ง สไลด์ กระโดด (ป.3/2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,500;0,700;0,800;1,700;1,800&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --turf:#0f5c3a; --turf-dk:#0a3d27; --chalk:#fbfaf3; --paper:#f4f2e6; --clay:#d8502d; --whistle:#ffc61a;
+  --run:#e2552d; --slide:#1f74e0; --jump:#14a05a; --gold:#ffc61a; --silver:#c5ccd3; --bronze:#d08a4e;
+  --ink:#0b2a1d; --muted:#586a5f; --line:#d6dccf; --bad:#d93a3a; --good:#14a05a;
+  --disp:'Kanit','Sarabun','Leelawadee UI','Noto Sans Thai',Tahoma,sans-serif;
+  --font:'Sarabun','Noto Sans Thai','Leelawadee UI',Tahoma,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--turf-dk);font-family:var(--font);color:var(--ink)}
+#stage{position:fixed;inset:0;width:100%;height:100%;display:block}
+#confetti{position:fixed;inset:0;width:100%;height:100%;z-index:8;pointer-events:none}
+:focus-visible{outline:3px solid var(--whistle);outline-offset:2px}
+.panel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:2vmin;z-index:5;background:rgba(6,34,22,.32)}
+.panel.show{display:flex}
+.sheet{position:relative;background:var(--chalk);border-radius:16px;box-shadow:0 0 0 3px var(--chalk),0 0 0 6px rgba(255,255,255,.28),0 22px 60px rgba(0,0,0,.4);
+  width:min(1080px,96vw);max-height:94vh;overflow:auto;padding:clamp(14px,2.4vmin,28px)}
+.sheet.narrow{width:min(760px,96vw)}
+h1,h2,.disp{font-family:var(--disp)}
+h1{margin:0;font-size:clamp(26px,5.4vmin,52px);font-weight:800;font-style:italic;letter-spacing:.2px;line-height:1.05;color:var(--turf-dk)}
+h1 small{display:block;font-size:.36em;font-style:normal;font-weight:500;color:var(--muted);letter-spacing:.3px;margin-top:6px}
+h2{margin:0 0 8px;font-size:clamp(18px,3vmin,28px);font-weight:700;color:var(--turf-dk)}
+.sub{color:var(--muted);margin:4px 0 14px;font-size:clamp(13px,2vmin,17px);line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:12px 0}
+.f{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:clamp(12px,1.8vmin,15px);color:var(--turf-dk)}
+select,input[type=text]{font:inherit;font-weight:600;padding:9px 12px;border:2px solid var(--line);border-radius:10px;background:#fff;min-width:140px;color:var(--ink)}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.bib{flex:none;position:relative;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:8px 18px 6px;text-align:center;min-width:128px;transform:rotate(2.2deg);
+  box-shadow:3px 4px 0 rgba(11,42,29,.18)}
+.bib::before,.bib::after{content:"";position:absolute;top:6px;width:8px;height:8px;border-radius:50%;background:var(--line);border:1px solid #aab3a6}
+.bib::before{left:6px}.bib::after{right:6px}
+.bib small{display:block;font-weight:700;font-size:12px;color:var(--muted)}
+.bib b{display:block;font-family:var(--disp);font-weight:800;font-style:italic;font-size:clamp(34px,7vmin,64px);line-height:1;color:var(--ink)}
+.bib.trial b{font-size:clamp(22px,4.4vmin,40px);padding:8px 0 4px}
+.seg{display:flex;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.seg label{cursor:pointer;font-weight:700;font-size:clamp(12px,1.8vmin,15px);color:var(--ink)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:9px 14px}
+.seg input:checked+span{background:var(--turf);color:#fff}
+.seg input:focus-visible+span{outline:3px solid var(--whistle);outline-offset:-3px}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 12px}
+@media(max-width:760px){.modes{grid-template-columns:1fr}.head{flex-direction:column}}
+.mode{position:relative;border:0;border-radius:12px;padding:clamp(12px,2.2vmin,22px);padding-bottom:clamp(20px,3.2vmin,30px);color:#fff;text-align:left;cursor:pointer;font:inherit;
+  display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;overflow:hidden;transition:transform .12s,box-shadow .12s;box-shadow:0 4px 0 rgba(0,0,0,.22)}
+.mode:hover{transform:translateY(-2px);box-shadow:0 6px 0 rgba(0,0,0,.22)}
+.mode:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.22)}
+.mode::after{content:"";position:absolute;left:0;right:0;bottom:9px;height:0;border-top:3px dashed rgba(255,255,255,.7)}
+.mode svg{grid-row:1 / span 2;width:clamp(44px,9vmin,84px);height:auto;stroke:#fff;fill:none;stroke-width:4.2;stroke-linecap:round;stroke-linejoin:round}
+.mode svg .fill{fill:#fff;stroke:none}
+.mode b{font-family:var(--disp);font-size:clamp(18px,3.2vmin,28px);font-weight:700;align-self:end;line-height:1.1}
+.mode span{font-size:clamp(12px,1.8vmin,15px);line-height:1.4;opacity:.96;align-self:start}
+.mode.run{background:var(--run)} .mode.slide{background:var(--slide)} .mode.jump{background:var(--jump)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 18px;cursor:pointer;background:#e7eadf;color:var(--ink);transition:background .12s}
+.btn:hover{background:#dadfcf}
+.btn.primary{background:var(--turf);color:#fff}
+.btn.primary:hover{background:#0b4a2e}
+.btn.accent{background:var(--whistle);color:var(--ink)}
+.btn.accent:hover{background:#f0b800}
+.btn.danger{background:#fbe6e3;color:var(--bad)}
+.btn.big{font-size:clamp(16px,2.6vmin,22px);padding:13px 24px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.note{font-size:clamp(11px,1.6vmin,13.5px);color:var(--muted);margin-top:10px;line-height:1.55}
+.flag{display:flex;align-items:center;gap:14px;background:var(--paper);border-radius:10px;padding:10px 14px;margin-top:6px}
+.flag .lbl{font-weight:700;font-size:clamp(12px,1.8vmin,15px);white-space:nowrap}
+.flag .lbl b{font-family:var(--disp);font-size:1.5em;font-style:italic}
+.lane{position:relative;flex:1;height:14px;border-radius:7px;background:repeating-linear-gradient(90deg,#d6c7b8 0 14px,#cdbba9 14px 28px);overflow:visible}
+.lane i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--clay);width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.lane em{position:absolute;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:var(--whistle);border:3px solid var(--ink);transition:left .8s cubic-bezier(.2,.8,.2,1)}
+.tabs{display:flex;gap:6px;border-bottom:3px solid var(--line);margin:8px 0 12px;flex-wrap:wrap}
+.tab{font:inherit;font-weight:700;border:0;background:transparent;padding:9px 16px;border-radius:10px 10px 0 0;cursor:pointer;color:var(--muted);margin-bottom:-3px;border-bottom:3px solid transparent}
+.tab[aria-selected=true]{color:var(--turf-dk);border-bottom-color:var(--turf)}
+.tabpane{display:none}.tabpane.show{display:block}
+table{border-collapse:collapse;width:100%;font-size:clamp(12px,1.8vmin,14.5px)}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:var(--paper);position:sticky;top:0;z-index:1;font-weight:700}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.up{color:#0b7a42;font-weight:700} td.dn{color:var(--bad);font-weight:700} td.zz{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 14px}
+@media(max-width:760px){.cards{grid-template-columns:1fr}}
+.kpi{border-radius:10px;padding:10px 14px;color:#fff}
+.kpi.run{background:var(--run)}.kpi.slide{background:var(--slide)}.kpi.jump{background:var(--jump)}
+.kpi h3{margin:0 0 2px;font-family:var(--disp);font-size:15px;font-weight:700}
+.kpi .v{font-family:var(--disp);font-weight:800;font-size:clamp(20px,3.4vmin,30px);font-style:italic}
+.kpi small{display:block;opacity:.92;font-size:12.5px}
+.bars{display:grid;grid-template-columns:minmax(120px,32%) 1fr 48px;gap:6px 10px;align-items:center;font-size:clamp(12px,1.8vmin,14.5px)}
+.bars .b{height:16px;border-radius:4px;background:var(--clay)}
+.bars .t{height:16px;border-radius:4px;background:var(--paper)}
+.set{display:grid;grid-template-columns:1fr 130px 60px;gap:8px 12px;align-items:center;margin:8px 0}
+.set small{color:var(--muted);display:block;font-weight:400;font-size:12px}
+.set b{font-weight:700}
+.medal{width:clamp(90px,18vmin,150px);height:auto;margin:0 auto;display:block}
+.pb{display:inline-block;background:var(--whistle);color:var(--ink);font-family:var(--disp);font-weight:700;font-style:italic;border-radius:999px;padding:4px 14px;margin:4px 0;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.big-num{font-family:var(--disp);font-size:clamp(40px,9vmin,84px);font-weight:800;font-style:italic;line-height:1;color:var(--turf-dk)}
+.big-num small{font-size:.32em;font-style:normal;font-weight:500;color:var(--muted)}
+.pips{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:10px 0}
+.pips i{width:clamp(14px,2.6vmin,22px);height:clamp(14px,2.6vmin,22px);border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:800;color:#fff}
+.pips i.ok{background:var(--good)}.pips i.no{background:var(--bad)}
+.tip{background:#eef5ea;border-left:5px solid var(--turf);border-radius:8px;padding:8px 12px;margin:6px 0;font-size:clamp(12px,1.8vmin,15px);line-height:1.5;text-align:left}
+#hudbtns{position:fixed;bottom:10px;right:10px;z-index:4;display:none;gap:8px}
+#hudbtns.show{display:flex}
+#hudbtns .btn{padding:8px 12px;font-size:14px;background:rgba(251,250,243,.92)}
+#status{position:fixed;left:50%;bottom:4vh;transform:translateX(-50%);z-index:9;display:none;max-width:92vw;
+  background:var(--chalk);border-radius:12px;padding:12px 18px;box-shadow:0 10px 30px rgba(0,0,0,.35);font-weight:700;text-align:center}
+#status.show{display:block}
+#status.err{background:#fff0ee;color:#9c1c1c;border:2px solid var(--bad)}
+kbd{background:#eef0e6;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-family:inherit;font-size:.92em}
+.hide{display:none!important}
+#printArea{display:none}
+@media print{
+  html,body{overflow:visible;background:#fff}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block;font-family:var(--font);color:#000;padding:0}
+  #printArea h2{font-family:var(--disp)}
+  #printArea table{font-size:13px}
+}
+/* ---------- หน้าปกเปิดเกม ---------- */
+.panel.intro{background:radial-gradient(ellipse at 50% 45%,rgba(6,34,22,.1) 0,rgba(6,34,22,.62) 100%);flex-direction:column;text-align:center;cursor:pointer;transition:opacity .38s,transform .38s}
+.panel.intro.leave{opacity:0;transform:scale(1.05);pointer-events:none}
+.intro .ttl{font-family:var(--disp);font-weight:800;font-style:italic;line-height:.95;color:var(--chalk);font-size:clamp(54px,14vmin,168px);letter-spacing:.01em;text-shadow:0 5px 0 rgba(0,0,0,.28)}
+.intro .ttl .l2{color:var(--whistle)}
+.intro .ttl div{display:block;white-space:nowrap}
+.lt{display:inline-block;opacity:0;animation:drop .62s cubic-bezier(.2,1.25,.4,1) both;animation-delay:var(--d,0s)}
+.intro .ttl{text-shadow:none;filter:drop-shadow(0 5px 0 rgba(0,0,0,.3)) drop-shadow(0 0 26px rgba(255,198,26,.18))}
+.intro .ttl .lt{background:linear-gradient(105deg,var(--c1) 0 38%,var(--c2) 50%,var(--c1) 62% 100%);background-size:320% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  animation:drop .62s cubic-bezier(.2,1.25,.4,1) both,sheen 4.2s linear infinite,bob 4.2s ease-in-out infinite;animation-delay:var(--d,0s),calc(var(--d,0s) + 2.9s),calc(var(--d,0s) + 3.6s)}
+.intro .ttl #ttl1{--c1:#fbfaf3;--c2:#ffd95e}
+.intro .ttl #ttl2{--c1:#ffc61a;--c2:#fffbe6}
+@keyframes sheen{0%{background-position:100% 0}28%,100%{background-position:0 0}}
+@keyframes bob{0%,82%,100%{transform:none}90%{transform:translateY(-9%) rotate(-2deg)}}
+.intro .chips{display:flex;gap:clamp(8px,1.8vmin,16px);justify-content:center;margin-top:clamp(12px,2.6vmin,24px)}
+.intro .chip{display:flex;align-items:center;gap:8px;color:#fff;font-family:var(--disp);font-weight:700;font-size:clamp(13px,2.3vmin,20px);border-radius:999px;padding:.32em 1em .32em .7em;opacity:0;animation:chipIn .5s cubic-bezier(.2,1.5,.4,1) both;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.intro .chip svg{width:1.5em;height:1.5em;stroke:#fff;fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.intro .chip svg .fill{fill:#fff;stroke:none}
+.intro .chip:nth-child(1){background:var(--run);animation-delay:3.35s}.intro .chip:nth-child(2){background:var(--slide);animation-delay:3.47s}.intro .chip:nth-child(3){background:var(--jump);animation-delay:3.59s}
+@keyframes chipIn{from{opacity:0;transform:translateY(16px) scale(.6) rotate(-6deg)}to{opacity:1;transform:none}}
+.intro .go .btn{position:relative;overflow:hidden}
+.intro .go .btn::after{content:"";position:absolute;top:0;bottom:0;width:38%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:glint 2.6s 4s infinite}
+@keyframes glint{0%{left:-60%}45%,100%{left:130%}}
+/* เปิดหน้าต่างและการ์ด */
+.panel.show:not(.intro) .sheet{animation:sheetIn .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(16px) scale(.975)}to{opacity:1;transform:none}}
+.panel.show .mode{animation:cardIn .42s cubic-bezier(.2,1.3,.4,1) backwards}
+.panel.show .mode:nth-child(1){animation-delay:.08s}.panel.show .mode:nth-child(2){animation-delay:.16s}.panel.show .mode:nth-child(3){animation-delay:.24s}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.mode svg{transition:transform .25s cubic-bezier(.2,1.6,.4,1)}
+.mode:hover svg{transform:scale(1.12) rotate(-5deg)}
+.panel.show .medal{animation:medalIn .8s cubic-bezier(.2,1.35,.4,1) backwards;transform-origin:50% 0}
+@keyframes medalIn{0%{opacity:0;transform:translateY(-70px) rotate(-28deg) scale(.5)}60%{opacity:1;transform:rotate(9deg)}80%{transform:rotate(-4deg)}100%{transform:none}}
+.pips i{animation:pop .3s cubic-bezier(.2,1.6,.4,1) backwards;animation-delay:calc(.35s + var(--i,0) * 45ms)}
+@keyframes drop{0%{opacity:0;transform:translateY(-130%) scaleY(1.6) skewX(-14deg)}55%{opacity:1;transform:translateY(7%) scaleY(.92)}100%{opacity:1;transform:none}}
+.intro .sprint{position:relative;width:min(78vw,720px);height:clamp(40px,8vmin,70px);margin:clamp(6px,1.6vmin,14px) auto 0}
+.intro .sprint i{position:absolute;left:0;right:0;bottom:6px;height:5px;border-radius:3px;background:var(--chalk);transform-origin:left;transform:scaleX(0);animation:draw .8s 1.35s cubic-bezier(.5,0,.2,1) forwards}
+.intro .sprint svg{position:absolute;bottom:3px;left:0;width:clamp(34px,7vmin,60px);height:auto;stroke:var(--whistle);fill:none;stroke-width:4.4;stroke-linecap:round;stroke-linejoin:round;opacity:0;animation:dash .8s 1.35s cubic-bezier(.5,0,.2,1) forwards}
+.intro .sprint svg .fill{fill:var(--whistle);stroke:none}
+@keyframes draw{to{transform:scaleX(1)}}
+@keyframes dash{0%{left:0;opacity:1}85%{opacity:1}100%{left:calc(100% - clamp(34px,7vmin,60px));opacity:0}}
+.intro .by{font-family:var(--disp);font-weight:700;color:var(--chalk);font-size:clamp(28px,6.8vmin,68px);margin-top:clamp(2px,1vmin,10px);text-shadow:0 3px 0 rgba(0,0,0,.4),0 0 18px rgba(6,34,22,.8)}
+.intro .by .nm{color:var(--whistle);font-style:italic}
+.intro .by .lt{animation:slidein .5s cubic-bezier(.2,.9,.3,1) both;animation-delay:var(--d,0s)}
+@keyframes slidein{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+.intro .go{margin-top:clamp(12px,3vmin,28px);opacity:0;animation:rise .55s 3.8s cubic-bezier(.2,1.3,.4,1) forwards}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.9)}to{opacity:1;transform:none}}
+.intro .go .btn{font-family:var(--disp);font-weight:800;font-size:clamp(20px,4.2vmin,38px);padding:.5em 1.8em;border-radius:999px;box-shadow:0 5px 0 #b98d00;animation:ring 1.8s 4.4s infinite}
+.intro .go .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #b98d00}
+@keyframes ring{0%{box-shadow:0 5px 0 #b98d00,0 0 0 0 rgba(255,198,26,.55)}70%{box-shadow:0 5px 0 #b98d00,0 0 0 22px rgba(255,198,26,0)}100%{box-shadow:0 5px 0 #b98d00,0 0 0 0 rgba(255,198,26,0)}}
+.intro .tag{margin-top:clamp(8px,1.8vmin,16px);color:#fbfaf3;text-shadow:0 2px 6px rgba(0,0,0,.7);font-weight:700;font-size:clamp(12px,2vmin,17px);opacity:0;animation:rise .5s 4s both}
+.intro.skip .lt,.intro.skip .go,.intro.skip .tag,.intro.skip .chip{animation:none!important;opacity:1}
+.intro.skip .ttl .lt{animation:sheen 4.2s linear infinite,bob 4.2s ease-in-out infinite!important;animation-delay:calc(var(--d,0s) - .2s),calc(var(--d,0s) + .5s)!important}
+.intro.skip .sprint i{animation:none!important;transform:none}
+.intro.skip .sprint svg{display:none}
+@media (prefers-reduced-motion:reduce){.intro *,.intro *::after{animation:none!important;opacity:1}.intro .sprint i{transform:none}.intro .sprint svg{display:none}.panel.intro{transition:none}.sheet,.mode,.medal,.pips i{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.pb{animation:none}.lane i,.lane em{transition:none}.mode{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<canvas id="confetti"></canvas>
+<video id="cam" playsinline muted style="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
+
+<div id="hudbtns">
+  <button class="btn" id="btnRecal">ตั้งค่าท่ายืนใหม่</button>
+  <button class="btn" id="btnExit">ออก (Esc)</button>
+</div>
+<div id="status" role="status" aria-live="polite"></div>
+
+<!-- เมนู -->
+<!-- หน้าปกเปิดเกม -->
+<div class="panel show intro" id="pIntro" aria-label="หน้าปก Motion Game">
+  <h1 class="ttl" aria-label="Motion Game"><div id="ttl1" aria-hidden="true"></div><div class="l2" id="ttl2" aria-hidden="true"></div></h1>
+  <div class="sprint" aria-hidden="true"><i></i>
+    <svg viewBox="0 0 64 64"><circle class="fill" cx="39" cy="10" r="5.5"/><path d="M35 18 L28 36 M34 21 L24 27 L17 22 M35 21 L45 27 L52 21 M28 36 L41 43 L39 57 M28 36 L18 45 L9 40"/></svg></div>
+  <div class="by" id="by" aria-label="Motion Game by ครูจ๊อบ"></div>
+  <div class="chips" aria-hidden="true"><div class="chip"><svg viewBox="0 0 64 64"><circle class="fill" cx="39" cy="10" r="5.5"/><path d="M35 18 L28 36 M34 21 L24 27 L17 22 M35 21 L45 27 L52 21 M28 36 L41 43 L39 57 M28 36 L18 45 L9 40"/></svg>วิ่ง</div><div class="chip"><svg viewBox="0 0 64 64"><circle class="fill" cx="32" cy="9" r="5.5"/><path d="M32 17 L32 37 M32 22 L19 29 M32 22 L45 29 M32 37 L22 57 M32 37 L47 52"/></svg>สไลด์</div><div class="chip"><svg viewBox="0 0 64 64"><circle class="fill" cx="32" cy="8" r="5.5"/><path d="M32 15 L32 34 M32 20 L21 11 M32 20 L43 11 M32 34 L23 44 L28 53 M32 34 L41 44 L36 53"/></svg>กระโดด</div></div>
+  <div class="go"><button class="btn accent" id="btnStart">เริ่มใช้งาน</button></div>
+  <div class="tag">ขยับให้ถูกท่าหน้ากล้อง เกมนับคะแนนให้</div>
+</div>
+
+<div class="panel" id="pMenu">
+  <div class="sheet">
+    <div class="head">
+      <h1>Motion Game<small>ฝึกวิ่ง · สไลด์ · กระโดด สำหรับนักเรียน ป.3/2 ขยับให้ถูกท่า เกมนับคะแนนให้</small></h1>
+      <div class="bib trial" id="bib" aria-live="polite"><small>นักกีฬาเลขที่</small><b id="bibNo">ฝึก</b></div>
+    </div>
+    <div class="row">
+      <label class="f">เลขที่นักเรียน
+        <select id="selStudent"></select>
+      </label>
+      <label class="f">ช่วงการเล่น
+        <select id="selPhase">
+          <option value="train">ฝึก</option>
+          <option value="pre">ก่อนเรียน (Pre)</option>
+          <option value="post">หลังเรียน (Post)</option>
+        </select>
+      </label>
+      <label class="f">ระดับ
+        <select id="selLevel">
+          <option value="easy">ง่าย</option>
+          <option value="normal" selected>ปกติ</option>
+          <option value="hard">ท้าทาย</option>
+        </select>
+      </label>
+      <div class="f" role="group" aria-label="แหล่งภาพ">แหล่งภาพ
+        <div class="seg">
+          <label><input type="radio" name="src" value="camera" checked><span>กล้อง</span></label>
+          <label><input type="radio" name="src" value="sim"><span>ทดลองไม่มีกล้อง</span></label>
+        </div>
+      </div>
+      <label class="f" id="camPickWrap" style="display:none">เลือกกล้อง
+        <select id="selCam"></select>
+      </label>
+      <div style="flex:1"></div>
+      <button class="btn" id="btnSettings">ตั้งค่า</button>
+      <button class="btn" id="btnLogs">ผลและส่งออก</button>
+      <button class="btn" id="btnHelp">วิธีใช้</button>
+    </div>
+    <div class="modes">
+      <button class="mode run" data-mode="run">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="fill" cx="39" cy="10" r="5.5"/><path d="M35 18 L28 36 M34 21 L24 27 L17 22 M35 21 L45 27 L52 21 M28 36 L41 43 L39 57 M28 36 L18 45 L9 40"/></svg>
+        <b>วิ่งตามจังหวะ</b><span>แตะเป้ามือกับเข่าที่ไฟติด สลับข้าง มือขวาคู่เข่าซ้าย</span>
+      </button>
+      <button class="mode slide" data-mode="slide">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="fill" cx="32" cy="9" r="5.5"/><path d="M32 17 L32 37 M32 22 L19 29 M32 22 L45 29 M32 37 L22 57 M32 37 L47 52 M8 60 L18 60 M8 60 L12 56 M8 60 L12 64 M56 60 L46 60 M56 60 L52 56 M56 60 L52 64"/></svg>
+        <b>สไลด์เก็บดาว</b><span>สไลด์ไปด้านข้างให้ตัวถึงดาว ไม่ใช้มือแตะ ห้ามไขว้ขา</span>
+      </button>
+      <button class="mode jump" data-mode="jump">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="fill" cx="32" cy="8" r="5.5"/><path d="M32 15 L32 34 M32 20 L21 11 M32 20 L43 11 M32 34 L23 44 L28 53 M32 34 L41 44 L36 53 M10 61 L54 61 M16 61 L16 56 M48 61 L48 56 M16 56 L48 56"/></svg>
+        <b>กระโดดข้ามรั้ว</b><span>กระโดดสองเท้าพร้อมกันให้พ้นเส้นกระโดด</span>
+      </button>
+    </div>
+    <div class="flag" aria-label="ดาวสะสมของห้อง">
+      <div class="lbl">ดาวสะสมของห้อง <b id="roomStars">0</b></div>
+      <div class="lane"><i id="laneFill"></i><em id="laneDot"></em></div>
+      <div class="lbl" id="roomGoal">เป้า 500</div>
+    </div>
+    <div class="note">ภาพจากกล้องประมวลผลในเครื่องนี้ เกมไม่บันทึกวิดีโอและไม่อัปโหลดภาพ แต่ไลบรารีตรวจท่า MediaPipe ส่งสถิติการใช้งานที่ไม่ใช่ภาพให้ Google (ดูหน้า “วิธีใช้”) ให้มีเด็กอยู่ในภาพคนเดียว และเว้นพื้นที่รอบตัวอย่างน้อย 2 เมตร</div>
+  </div>
+</div>
+
+<!-- ผลการเล่น -->
+<div class="panel" id="pResult">
+  <div class="sheet narrow" style="text-align:center">
+    <h2 id="rTitle">ผลการเล่น</h2>
+    <div id="rMedal"></div>
+    <div id="rPB"></div>
+    <div class="big-num"><span id="rPct">0</span><small> % ท่าถูกต้อง</small></div>
+    <p class="sub" id="rDetail"></p>
+    <div class="pips" id="rPips" aria-label="ผลแต่ละครั้ง"></div>
+    <div id="rTips"></div>
+    <div class="row" style="justify-content:center;align-items:center">
+      <button class="btn primary big" id="btnAgain">เล่นอีกครั้ง</button>
+      <button class="btn accent big" id="btnNext">คนถัดไป</button>
+      <button class="btn big" id="btnMenu">กลับเมนู</button>
+    </div>
+    <div class="note" id="rSaved"></div>
+  </div>
+</div>
+
+<!-- ตั้งค่า -->
+<div class="panel" id="pSettings">
+  <div class="sheet narrow">
+    <h2>ตั้งค่าความไว</h2>
+    <p class="sub">ถ้าเด็กทำถูกแต่ไม่ได้แต้ม ให้ผ่อนเกณฑ์ ถ้าผ่านง่ายเกินไป ให้เข้มขึ้น เกมบันทึกค่าไว้ในเครื่องนี้อัตโนมัติ ระดับ “ปกติ” ใช้ค่าตามนี้โดยตรง ระดับ “ง่าย” และ “ท้าทาย” ปรับจากค่านี้ ควรใช้ระดับเดียวกันตลอดการทดสอบก่อนและหลังเรียน</p>
+    <div id="setBox"></div>
+    <div class="row">
+      <button class="btn" id="btnSetReset">คืนค่าเริ่มต้น</button>
+      <div style="flex:1"></div>
+      <button class="btn primary" data-close>ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ผล/ส่งออก -->
+<div class="panel" id="pLogs">
+  <div class="sheet">
+    <h2>ผลและส่งออก</h2>
+    <p class="sub">ข้อมูลจากเกมเป็นหลักฐานเสริม (ร้อยละท่าถูกต้อง) คะแนน Pre/Post ทางการใช้แบบประเมินที่ครูสังเกต</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="tOver">ภาพรวมห้อง</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="tStu">รายบุคคล</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="tRaw">ข้อมูลดิบ</button>
+    </div>
+    <div class="tabpane show" id="tOver">
+      <div class="cards" id="kpiCards"></div>
+      <h2 style="font-size:clamp(15px,2.2vmin,19px)">สาเหตุที่ผิดบ่อย</h2>
+      <div class="bars" id="errBars"></div>
+      <h2 style="font-size:clamp(15px,2.2vmin,19px);margin-top:16px">ตารางรายคน (ผลล่าสุดแต่ละช่วง)</h2>
+      <div style="max-height:34vh;overflow:auto" id="classTable"></div>
+    </div>
+    <div class="tabpane" id="tStu">
+      <div class="row" style="margin-top:0">
+        <label class="f">เลขที่
+          <select id="selStuView"></select>
+        </label>
+        <div style="flex:1"></div>
+        <button class="btn primary" id="btnPrint">พิมพ์ใบสรุปรายบุคคล</button>
+      </div>
+      <div id="stuChart"></div>
+      <div id="stuTable" style="max-height:26vh;overflow:auto"></div>
+    </div>
+    <div class="tabpane" id="tRaw">
+      <div style="max-height:44vh;overflow:auto" id="logList"></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btnCsv">ส่งออก CSV</button>
+      <button class="btn" id="btnBackup">สำรองข้อมูล (JSON)</button>
+      <label class="btn" style="cursor:pointer">นำเข้าสำรอง<input type="file" id="fileRestore" accept="application/json,.json" class="hide"></label>
+      <button class="btn danger" id="btnClear">ล้างข้อมูลทั้งหมด</button>
+      <div style="flex:1"></div>
+      <button class="btn" data-close>ปิด</button>
+    </div>
+    <div class="note">ข้อมูลเก็บในเบราว์เซอร์ของเครื่องนี้ ถ้าล้างประวัติเบราว์เซอร์หรือเปลี่ยนเครื่องข้อมูลจะหาย ควรกด “ส่งออก CSV” และ “สำรองข้อมูล” เก็บไว้หลังใช้งานทุกครั้ง</div>
+  </div>
+</div>
+
+<!-- วิธีใช้ -->
+<div class="panel" id="pHelp">
+  <div class="sheet narrow">
+    <h2>วิธีใช้และการตั้งกล้อง</h2>
+    <div class="tip"><b>ตั้งกล้อง:</b> วางกล้อง/แล็ปท็อปสูงประมาณระดับอก ห่างจากเด็ก 2.5–3 เมตร ให้เห็นตั้งแต่ศีรษะถึงเท้า ต่อจอหรือโปรเจกเตอร์ให้เด็กมองเห็น</div>
+    <div class="tip"><b>อยากใช้กล้องมือถือแทนเพื่อความคมชัด:</b> เกมนี้เปิดจากเบราว์เซอร์บนคอมพิวเตอร์ จึงใช้กล้องของ “เครื่องที่เปิดเกม” เท่านั้น หากต้องการภาพจากมือถือ ให้ติดตั้งแอปทำมือถือเป็นกล้องเว็บแคม (เช่น Iriun Webcam, DroidCam, EpocCam) บนมือถือและคอมพิวเตอร์เครื่องเดียวกัน เชื่อมต่อแล้วกล้องมือถือจะปรากฏในช่อง “เลือกกล้อง” ที่หน้าเมนู (จะโผล่เมื่อเครื่องเจอกล้องมากกว่า 1 ตัว) เลือกกล้องนั้นก่อนกดเริ่มเล่น</div>
+    <div class="tip"><b>แสงและพื้นหลัง:</b> ให้แสงสว่างมาจากด้านหน้า ไม่ย้อนแสง พื้นหลังไม่รก ให้เด็กคนอื่นอยู่นอกกรอบภาพ ระหว่างตั้งค่าท่ายืน เกมจะแจ้งถ้าแสงน้อยหรือเครื่องช้า</div>
+    <div class="tip"><b>ก่อนเล่นทุกครั้ง:</b> เด็กยืนตรง หันหน้าเข้ากล้อง นิ่ง ๆ 3 วินาที เพื่อให้เกมวัดสัดส่วนร่างกายของเด็กคนนั้น (เส้นกระโดดและเป้าจะปรับตามตัวเด็ก)</div>
+    <div class="tip"><b>ระดับ ง่าย / ปกติ / ท้าทาย:</b> ปรับระยะดาว เวลา ความสูงเส้นกระโดด ขนาดเป้า และจังหวะ คะแนนยังเท่าเดิมคือครั้งละ 10 คะแนนเมื่อท่าถูก ใช้ระดับ “ปกติ” กับการทดสอบก่อนและหลังเรียนเพื่อให้เทียบกันได้</div>
+    <div class="tip"><b>เด็กคนถัดไป:</b> หลังจบเกมกด “คนถัดไป” เพื่อเปลี่ยนเป็นเลขที่ถัดไปและตั้งค่าท่ายืนต่อได้ทันที</div>
+    <div class="tip"><b>ความปลอดภัย:</b> เว้นพื้นที่รอบตัว ≥ 2 เมตร พื้นไม่ลื่น ให้เด็กสวมรองเท้าผ้าใบ</div>
+    <div class="tip"><b>โหมดทดลองไม่มีกล้อง:</b> ใช้ลองกติกาเท่านั้น (ไม่ใช่ให้เด็กเล่น) ปุ่ม <kbd>←</kbd><kbd>→</kbd> สไลด์ · <kbd>C</kbd> (ค้าง) ไขว้ขา · <kbd>Space</kbd> กระโดดสองเท้า · <kbd>J</kbd> กระโดดเท้าเดียว · <kbd>Q</kbd> มือขวา+เข่าซ้าย · <kbd>E</kbd> มือซ้าย+เข่าขวา · <kbd>R</kbd> มือขวา+เข่าขวา (สลับข้างผิด) · <kbd>Esc</kbd> ออก</div>
+    <div class="tip"><b>ความเป็นส่วนตัว:</b> เกมนี้ไม่บันทึกวิดีโอและไม่อัปโหลดภาพ ภาพถูกประมวลผลในเบราว์เซอร์ของเครื่องนี้ แต่ไลบรารี MediaPipe ที่ใช้ตรวจท่าทางส่งข้อมูลสถิติการใช้งาน (เช่น ประสิทธิภาพเครื่อง ลักษณะทั่วไปของสื่อที่ประมวลผล) ให้ Google ควรแจ้งผู้ปกครองและขอความยินยอมก่อนให้เด็กใช้กล้อง</div>
+    <div class="note">เกมต้องต่ออินเทอร์เน็ตตอนเริ่มโหมดกล้องครั้งแรกเพื่อโหลดโมเดลตรวจท่าทาง (MediaPipe Pose Landmarker โดย Google) เกมเก็บไฟล์โมเดลไว้ในเครื่องหลังโหลดสำเร็จ แต่ส่วนประมวลผลของไลบรารียังโหลดจากอินเทอร์เน็ต ซึ่งเบราว์เซอร์มักเก็บแคชไว้ให้ จึงควรเปิดทดสอบครั้งแรกขณะต่ออินเทอร์เน็ตที่โรงเรียนก่อนวันใช้จริง ความแม่นยำกับเด็กจริงขึ้นกับแสง ชุดที่สวมใส่ และมุมกล้อง ควรทดลองกับเด็ก 2–3 คนแล้วปรับความไวในหน้าตั้งค่า</div>
+    <div class="row"><div style="flex:1"></div><button class="btn primary" data-close>ปิด</button></div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   Motion Game – ฝึกวิ่ง สไลด์ กระโดด
+   ไฟล์เดียว เปิดในเบราว์เซอร์ (Chrome/Edge) ได้เลย
+   ============================================================ */
+const MP_BASE  = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
+const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+const SMOOTH = 0.7;           // 1 = ไม่ปรับให้เรียบ, ต่ำลง = เรียบขึ้นแต่หน่วงขึ้น
+const N_STUDENTS = 21;
+
+/* ---------- ตัวช่วย ---------- */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t)=>a+(b-a)*t;
+const median = arr => { if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+const fmt = (v,d=1)=> v==null ? '–' : v.toFixed(d);
+const FONT = "'Kanit','Sarabun','Leelawadee UI','Noto Sans Thai',Tahoma,sans-serif";
+
+const mem = {};
+const store = {
+  get(k,def){ try{ const v=localStorage.getItem(k); return v==null?(k in mem?mem[k]:def):JSON.parse(v);}catch(e){return k in mem?mem[k]:def;} },
+  set(k,v){ mem[k]=v; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- การตั้งค่า ---------- */
+const DEFAULTS = {
+  rounds:8,       // จำนวนครั้งต่อเกม (สไลด์/กระโดด) / จำนวนจังหวะ = ×2 (วิ่ง)
+  slideDist:2.2,  // ระยะดาว (เท่าของความยาวลำตัว)
+  slideTime:5,    // เวลาต่อดาว (วินาที)
+  slideCross:1,   // ความเข้มงวดเรื่องไขว้ขา
+  jumpFrac:0.15,  // ความสูงที่ต้องลอย (สัดส่วนความยาวขา)
+  jumpSync:150,   // ความต่างเวลาสองเท้าที่ยอมรับได้ (มิลลิวินาที)
+  bpm:84,         // จังหวะวิ่ง
+  runRadius:0.32, // ขนาดเป้า (เท่าของลำตัว)
+  minVis:0.4,     // ความมั่นใจต่ำสุดของจุดบนร่างกาย
+  skeleton:1,     // แสดงเส้นโครงกระดูก
+  sound:1
+};
+const SET_UI = [
+  ['rounds','จำนวนครั้งต่อเกม','สไลด์/กระโดด = จำนวนครั้ง, วิ่ง = ×2 จังหวะ',4,16,1],
+  ['slideDist','ระยะดาว (สไลด์)','เท่าของความยาวลำตัว มาก = ต้องสไลด์ไกลขึ้น',1.2,3.2,0.1],
+  ['slideTime','เวลาต่อดาว (วินาที)','',3,10,0.5],
+  ['slideCross','เข้มงวดเรื่องไขว้ขา','มาก = จับไขว้ขาง่ายขึ้น',0.5,2,0.1],
+  ['jumpFrac','ความสูงเส้นกระโดด','สัดส่วนของความยาวขา ต่ำ = ผ่านง่าย',0.08,0.30,0.01],
+  ['jumpSync','เกณฑ์สองเท้าพร้อมกัน (ms)','มาก = ผ่อนผันมากขึ้น',60,300,10],
+  ['bpm','จังหวะวิ่ง (BPM)','',56,140,2],
+  ['runRadius','ขนาดเป้า (วิ่ง)','มาก = แตะง่ายขึ้น',0.2,0.6,0.02],
+  ['minVis','ความมั่นใจต่ำสุดของจุดร่างกาย','ถ้าเกมหยุดบ่อยให้ลดลง',0.2,0.8,0.05],
+];
+let set = Object.assign({}, DEFAULTS, store.get('mg_settings_v2',{}));
+const saveSet = ()=>store.set('mg_settings_v2',set);
+/* ระดับความยาก: ตัวคูณจากค่าตั้งต้น (ระดับ “ปกติ” = ค่าตามหน้าตั้งค่า) คะแนนต่อครั้งเท่าเดิมทุกระดับ */
+const LEVELS={
+  easy:  {name:'ง่าย',   m:{slideDist:.8, slideTime:1.4,slideCross:.8, jumpFrac:.75,jumpSync:1.4,bpm:.88,runRadius:1.25}},
+  normal:{name:'ปกติ',   m:{}},
+  hard:  {name:'ท้าทาย', m:{slideDist:1.2,slideTime:.8, slideCross:1.25,jumpFrac:1.25,jumpSync:.75,bpm:1.15,runRadius:.85}}
+};
+let eff = Object.assign({},DEFAULTS);
+function buildEff(level){
+  const m=(LEVELS[level]||LEVELS.normal).m, e=Object.assign({},set);
+  for(const k in m) e[k]=+(e[k]*m[k]).toFixed(3);
+  e.bpm=Math.round(e.bpm);
+  return e;
+}
+
+/* ---------- สถานะรวม ---------- */
+const canvas = $('#stage'), ctx = canvas.getContext('2d');
+const cam = $('#cam');
+let ASPECT = 16/9;
+const S = {
+  screen:'intro',       // intro | menu | calibrate | count | play | result
+  input:'camera',
+  student:0, phase:'train', modeKey:null,
+  cal:null, calib:null, mode:null,
+  body:null, bodyAge:0, tracked:true,
+  gnow:0, countT:0, toast:null,
+  simT:0, lastResult:null,
+  manual:false, busy:false, fx:[], level:'normal', fps:0, light:null, lostMs:0, people:0, combo:null, lastDet:0
+};
+let view = {x:0,y:0,w:100,h:100}, dpr=1;
+let landmarker=null, lastVT=-1, lastDetT=0, prevP=null, camReady=false;
+
+/* ---------- จุดร่างกาย ---------- */
+const BONES=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,31],[28,32]];
+const LM = {NOSE:0,LSH:11,RSH:12,LWR:15,RWR:16,LHIP:23,RHIP:24,LKN:25,RKN:26,LAN:27,RAN:28};
+const dist = (a,b)=>Math.hypot((a.x-b.x)*ASPECT, a.y-b.y);   // หน่วย = ความสูงภาพ
+function buildBody(P,t){
+  return { t, P,
+    shMid:{x:(P[11].x+P[12].x)/2,y:(P[11].y+P[12].y)/2},
+    hipMid:{x:(P[23].x+P[24].x)/2,y:(P[23].y+P[24].y)/2} };
+}
+function has(body,ids){ return !!body && ids.every(i=>body.P[i] && body.P[i].v>=set.minVis); }
+/* มือถือภาพจากกล้อง: กลับซ้าย-ขวาให้เป็นภาพกระจก แล้วปรับให้เรียบ */
+/* ตัวกรอง One-Euro: นิ่งเมื่อยืนเฉย ๆ แต่ตามทันเมื่อขยับเร็ว (ลดอาการจุดสั่นโดยไม่ทำให้ภาพหน่วง) */
+class OneEuro{
+  constructor(minCut=1.4,beta=7,dcut=1){ this.mc=minCut; this.b=beta; this.dc=dcut; this.x=null; this.dx=0; this.t=null; }
+  static a(cut,dt){ const tau=1/(2*Math.PI*cut); return 1/(1+tau/dt); }
+  f(v,t){
+    if(this.x==null){ this.x=v; this.t=t; return v; }
+    const dt=Math.max(.001,(t-this.t)/1000); this.t=t;
+    this.dx+=OneEuro.a(this.dc,dt)*((v-this.x)/dt-this.dx);
+    this.x+=OneEuro.a(this.mc+this.b*Math.abs(this.dx),dt)*(v-this.x);
+    return this.x;
+  }
+}
+let filt=null;
+function bodyFromCamera(lms,t){
+  if(!filt) filt=lms.map(()=>({x:new OneEuro(),y:new OneEuro()}));
+  const P=lms.map((l,i)=>({x:filt[i].x.f(1-l.x,t),y:filt[i].y.f(l.y,t),v:(l.visibility==null?1:l.visibility)}));
+  return buildBody(P,t);
+}
+
+/* ---------- เสียง ---------- */
+let AC=null;
+function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC&&AC.state==='suspended') AC.resume(); return AC; }
+function beep(freq=660,dur=0.09,vol=0.18,type='sine'){
+  if(!set.sound||S.manual) return; const a=audio(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(vol,a.currentTime); g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+  o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+dur+0.02);
+}
+const sfx = { ok:()=>{beep(740,.1,.2);setTimeout(()=>beep(990,.14,.2),90)}, bad:()=>beep(200,.22,.2,'sawtooth'), tick:(acc)=>beep(acc?980:700,.07,.22,'square'), go:()=>beep(1180,.25,.22), combo:()=>{beep(880,.08,.2);setTimeout(()=>beep(1175,.08,.2),70);setTimeout(()=>beep(1568,.16,.2),140)},
+  win:()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.18,.2,'triangle'),i*120))} };
+
+/* ============================================================
+   ตัวจำลองท่าทาง (ทดลองโดยไม่มีกล้อง / ใช้ทดสอบตรรกะ)
+   ============================================================ */
+class Sim{
+  constructor(){ this.reset(); }
+  reset(){
+    this.cx=0.5; this.cross=false; this.keys={};
+    this.rise={L:0,R:0}; this.knee={L:0,R:0}; this.hand={L:0,R:0};
+    this.jt=-1; this.pt=-1;
+  }
+  doJump(kind='both',delayR=0){ if(this.jt>=0) return; this.jt=0; this.jdur=520; this.jh=0.11; this.kind=kind; this.delayR=delayR; this.jhOverride=null; }
+  doPair(handSide,kneeSide,dur=420){ this.pt=0; this.pdur=dur; this.hs=handSide; this.ks=kneeSide; }
+  update(dt){
+    const sp=0.32;
+    if(this.keys.ArrowLeft)  this.cx-=sp*dt/1000;
+    if(this.keys.ArrowRight) this.cx+=sp*dt/1000;
+    this.cx=clamp(this.cx,0.06,0.94);
+    if(this.keys.c||this.keys.C) this.cross=true; else if(!this.forceCross) this.cross=false;
+    this.rise={L:0,R:0};
+    if(this.jt>=0){
+      this.jt+=dt;
+      const h=this.jhOverride!=null?this.jhOverride:this.jh;
+      const f=(t)=>{const u=t/this.jdur; return (u>0&&u<1)?4*u*(1-u)*h:0;};
+      this.rise.L = this.kind==='right'?0:f(this.jt);
+      this.rise.R = this.kind==='one'||this.kind==='left'?0:f(this.jt-this.delayR);
+      if(this.jt>this.jdur+(this.delayR||0)+30) this.jt=-1;
+    }
+    this.knee={L:0,R:0}; this.hand={L:0,R:0};
+    if(this.pt>=0){
+      this.pt+=dt; const u=this.pt/this.pdur;
+      const e=u<1?Math.sin(Math.PI*u):0; const k=Math.min(1,e*1.6);
+      this.hand[this.hs]=k; this.knee[this.ks]=k;
+      if(u>=1) this.pt=-1;
+    }
+  }
+  pose(t){
+    const T=0.24, shY=0.20, hipY=0.44, kneeY0=0.63, ankY0=0.82, A=ASPECT, cx=this.cx;
+    const X=d=>cx+d/A;
+    const P=Array.from({length:33},()=>({x:cx,y:0.5,v:0}));
+    const put=(i,x,y)=>{P[i]={x,y,v:1};};
+    put(0,X(0),0.10);
+    put(11,X(-0.065),shY); put(12,X(0.065),shY);
+    put(13,X(-0.085),(shY+hipY)/2); put(14,X(0.085),(shY+hipY)/2);
+    const wr=(side)=>{ const s=side==='L'?-1:1, k=this.hand[side];
+      return [X(s*lerp(0.09,0.95*T,k)), lerp(hipY+0.02, shY+0.45*T, k)]; };
+    put(15,...wr('L')); put(16,...wr('R'));
+    put(23,X(-0.045),hipY); put(24,X(0.045),hipY);
+    const kn=(side)=>{ const s=side==='L'?-1:1,k=this.knee[side];
+      return [X(s*lerp(0.05,0.38*T,k)), lerp(kneeY0,hipY+0.1*T,k)]; };
+    put(25,...kn('L')); put(26,...kn('R'));
+    const ax=this.cross?0.06:-0.06;
+    put(27,X(ax),ankY0-this.rise.L); put(28,X(-ax),ankY0-this.rise.R);
+    put(31,X(ax),ankY0-this.rise.L+0.02); put(32,X(-ax),ankY0-this.rise.R+0.02);
+    return buildBody(P,t);
+  }
+}
+const sim = new Sim();
+
+/* ============================================================
+   ตั้งค่าท่ายืน (Calibration)
+   ============================================================ */
+class Calibrator{
+  constructor(){ this.reset(); this.msg='ยืนตรง หันหน้าเข้ากล้อง ให้เห็นทั้งตัว'; this.progress=0; }
+  reset(){ this.hold=0; this.frames=[]; this.last=null; }
+  update(body,dt){
+    const need=[11,12,23,24,25,26,27,28];
+    if(!has(body,need)){ this.reset(); this.progress=0; this.msg='ถอยหลังให้เห็นตั้งแต่ศีรษะถึงเท้า'; return null; }
+    const snap={hx:body.hipMid.x,hy:body.hipMid.y,la:body.P[27].y,ra:body.P[28].y};
+    if(this.last){
+      const mv=Math.max(Math.abs(snap.hx-this.last.hx)*ASPECT,Math.abs(snap.hy-this.last.hy),Math.abs(snap.la-this.last.la),Math.abs(snap.ra-this.last.ra));
+      if(mv>0.03){ this.reset(); this.msg='ยืนนิ่ง ๆ ไว้ก่อน'; }
+    }
+    this.last=snap; this.hold+=dt;
+    const P=body.P;
+    this.frames.push({
+      cx:body.hipMid.x, shY:body.shMid.y, hipY:body.hipMid.y,
+      T:Math.hypot((body.shMid.x-body.hipMid.x)*ASPECT, body.shMid.y-body.hipMid.y),
+      leg:(P[27].y+P[28].y)/2-body.hipMid.y, fl:P[27].y, fr:P[28].y
+    });
+    if(this.frames.length>240) this.frames.shift();
+    this.progress=clamp(this.hold/3000,0,1);
+    if(this.hold<3000){ if(this.msg.indexOf('ยืนนิ่ง')<0) this.msg='นิ่ง ๆ อีกนิด…'; return null; }
+    const m=k=>median(this.frames.map(f=>f[k]));
+    const cal={cx:m('cx'),shY:m('shY'),hipY:m('hipY'),T:m('T'),legL:m('leg'),floorL:m('fl'),floorR:m('fr')};
+    if(cal.T<0.08){ this.reset(); this.msg='เด็กอยู่ไกลเกินไป ขยับเข้าใกล้กล้องอีกนิด'; return null; }
+    if(cal.T>0.34){ this.reset(); this.msg='เด็กอยู่ใกล้เกินไป ถอยหลังอีกนิด'; return null; }
+    if(cal.legL<0.1){ this.reset(); this.msg='ให้เห็นเท้าทั้งสองข้างในภาพ'; return null; }
+    return cal;
+  }
+}
+
+/* ============================================================
+   โหมดเกม
+   ============================================================ */
+class BaseMode{
+  constructor(cal){ this.cal=cal; this.results=[]; this.finished=false; this.flash=null; this.streak=0; this.best=0; }
+  record(ok,reason,now){
+    this.results.push({ok,reason});
+    const txt = ok ? pick(['เยี่ยมมาก!','ถูกต้อง!','เก่งจัง!','สุดยอด!']) : (SHORT[reason]||reason);
+    S.toast={text:txt, color: ok?'#14a05a':'#d93a3a', from:now, until:now+1300};
+    this.streak=ok?this.streak+1:0; this.best=Math.max(this.best,this.streak);
+    if(ok) spark(this.fxPos());
+    if(ok&&[3,5,8,12].includes(this.streak)){ S.combo={n:this.streak,until:now+1600}; sfx.combo(); }
+    else ok?sfx.ok():sfx.bad();
+    this.flash={ok,until:now+450};
+  }
+  fxPos(){ return S.body?{x:S.body.hipMid.x,y:S.body.hipMid.y}:{x:.5,y:.5}; }
+  get done(){ return this.results.length; }
+  get good(){ return this.results.filter(r=>r.ok).length; }
+}
+const pick = a=>a[Math.floor(Math.random()*a.length)];
+/* ข้อความสั้นสำหรับแสดงบนจอ (ข้อความเต็มอยู่ในหน้าสรุปผล) */
+const SHORT={
+  'ไขว้ขา':'ไขว้ขา!','ไปไม่ถึงดาวทันเวลา':'ช้าไปนิด!',
+  'ไม่ได้กระโดด':'ต้องกระโดดนะ!','สองเท้าไม่พร้อมกัน':'สองเท้าต้องพร้อมกัน!','ขึ้นเท้าเดียว':'ใช้สองเท้านะ!','กระโดดยังไม่สูงพอ':'สูงอีกนิด!',
+  'สลับข้างไม่ถูก (ต้องมือขวาคู่เข่าซ้าย)':'สลับข้างไม่ถูก!','มือและเข่าไม่ถึงเป้า':'ยกมือและเข่าให้ถึงเป้า!',
+  'มือไม่ถึงเป้า':'มือไม่ถึงเป้า!','ยกเข่าไม่สูงพอ':'ยกเข่าสูงอีกนิด!','มือกับเข่าไม่พร้อมกัน':'มือกับเข่าให้พร้อมกัน!'
+};
+
+/* ---- สไลด์เก็บดาว ---- */
+class SlideMode extends BaseMode{
+  constructor(cal){
+    super(cal); this.key='slide'; this.title='สไลด์เก็บดาว'; this.total=eff.rounds;
+    this.need=[11,12,23,24,27,28]; this.side=Math.random()<.5?-1:1; this.state='pause'; this.tNext=600;
+  }
+  spawn(now){
+    const c=this.cal; this.side*=-1;
+    const d=clamp(eff.slideDist*c.T/ASPECT,0.12,0.40);
+    this.target={x:clamp(c.cx+this.side*d,0.08,0.92),y:c.hipY};
+    this.radius=0.4*c.T/ASPECT;
+    this.t0=now; this.crossMs=0; this.inMs=0; this.state='go';
+  }
+  update(now,dt,body,isNew){
+    if(this.state==='pause'){
+      if(now>=this.tNext){ if(this.done>=this.total){ this.finished=true; return; } this.spawn(now); }
+      return;
+    }
+    const c=this.cal, P=body.P, hx=body.hipMid.x;
+    const margin=0.25*c.T/ASPECT/eff.slideCross;
+    this.crossing = (P[27].x-P[28].x) > margin;          // ภาพกระจก: ข้อเท้าซ้ายต้องอยู่ซ้ายของข้อเท้าขวา
+    if(this.crossing) this.crossMs+=dt;
+    this.elapsed=now-this.t0;
+    const inside=Math.abs(hx-this.target.x)<=this.radius; this.inMs=inside?this.inMs+dt:0;
+    if(this.inMs>=100){            // ต้องอยู่ในวงดาวต่อเนื่อง 0.1 วินาที กันค่าจุดสั่นแตะผ่าน
+      if(this.crossMs>=120) this.record(false,'ไขว้ขา',now);
+      else this.record(true,'',now);
+      this.state='pause'; this.tNext=now+900;
+    } else if(this.elapsed>eff.slideTime*1000){
+      this.record(false,'ไปไม่ถึงดาวทันเวลา',now);
+      this.state='pause'; this.tNext=now+900;
+    }
+  }
+  draw(now){
+    const c=this.cal;
+    if(this.state==='go'){
+      const tx=px(this.target.x), ty=py(this.target.y), r=this.radius*view.w;
+      const pulse=1+0.08*Math.sin(now/160);
+      ctx.save();
+      ctx.globalAlpha=.38; ctx.fillStyle='#ffe27a'; ctx.beginPath(); ctx.arc(tx,ty,r*1.25,0,7); ctx.fill();
+      ctx.globalAlpha=1; star(tx,ty,r*0.8*pulse,'#ffc93c','#fff');
+      const frac=clamp(1-this.elapsed/(eff.slideTime*1000),0,1);
+      ctx.lineWidth=Math.max(5,view.h*0.012); ctx.strokeStyle=frac>0.3?'#ffffff':'#ff6b6b';
+      ctx.beginPath(); ctx.arc(tx,ty,r*1.25,-Math.PI/2,-Math.PI/2+Math.PI*2*frac); ctx.stroke();
+      ctx.setLineDash([12,10]); ctx.strokeStyle='rgba(255,255,255,.75)'; ctx.lineWidth=4;
+      if(S.body){ const bx=px(S.body.hipMid.x), by=py(S.body.hipMid.y), rr=Math.max(10,view.h*0.028);
+        ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(tx-Math.sign(tx-bx)*r*1.3,ty); ctx.stroke(); ctx.setLineDash([]);
+        /* จุดเหลืองกลางลำตัว = จุดที่ต้องพาไปถึงดาว (ไม่ใช่มือ) */
+        ctx.fillStyle='#ffc61a'; ctx.strokeStyle='#fff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(bx,by,rr*(1+0.12*Math.sin(now/140)),0,7); ctx.fill(); ctx.stroke();
+        label('ตัว',bx,by-rr-view.h*0.03,'#0b2a1d','#ffc61a',view.h*0.026); }
+      ctx.restore();
+      if(this.crossing) prompt('ห้ามไขว้ขา! สไลด์ข้าง','#d93a3a');
+      else prompt('สไลด์พาตัวไปถึงดาว','rgba(8,48,31,.86)');
+    }
+  }
+  fxPos(){ return this.target||super.fxPos(); }
+  hud(){ return `ดาวที่ ${Math.min(this.done+1,this.total)}/${this.total}`; }
+}
+
+/* ---- กระโดดข้ามรั้ว ---- */
+class JumpMode extends BaseMode{
+  constructor(cal){
+    super(cal); this.key='jump'; this.title='กระโดดข้ามรั้ว'; this.total=eff.rounds;
+    this.need=[11,12,23,24,27,28];
+    this.approach=3000; this.gap=3600; this.lead=3500; this.W=700;
+    this.hurdles=Array.from({length:this.total},(_,i)=>({arrive:this.lead+i*this.gap,peakL:0,peakR:0,peakMin:0,tkL:null,tkR:null,judged:false,res:null}));
+    this.fl=cal.floorL; this.fr=cal.floorR; this.lastT=null; this.lastYL=null; this.lastYR=null;
+    this.t0=null;
+  }
+  req(){ return eff.jumpFrac*this.cal.legL; }
+  update(now,dt,body,isNew){
+    if(this.t0==null) this.t0=now;
+    const t=now-this.t0, P=body.P, yL=P[27].y, yR=P[28].y, req=this.req();
+    /* ปรับระดับพื้นช้า ๆ เมื่อเท้านิ่ง (กันกล้อง/ท่ายืนเปลี่ยนเล็กน้อย) */
+    if(body.t!==this.lastT){
+      if(this.lastT!=null){
+        const dtp=Math.max(1,body.t-this.lastT);
+        const vL=Math.abs(yL-this.lastYL)/dtp*1000, vR=Math.abs(yR-this.lastYR)/dtp*1000;
+        /* ปรับเฉพาะเมื่อเท้าอยู่ใกล้พื้นจริง ๆ (ไม่ปรับระหว่างลอย ไม่งั้นกลืนกินการกระโดดเตี้ย ๆ) */
+        if(vL<0.12 && Math.abs(yL-this.fl)<0.25*req) this.fl+=0.03*(yL-this.fl);
+        if(vR<0.12 && Math.abs(yR-this.fr)<0.25*req) this.fr+=0.03*(yR-this.fr);
+      }
+      this.lastT=body.t; this.lastYL=yL; this.lastYR=yR;
+    }
+    this.riseL=this.fl-yL; this.riseR=this.fr-yR;
+    const thr=0.45*req;
+    this.cur=null;
+    for(const h of this.hurdles){
+      if(h.judged) continue;
+      if(t>=h.arrive-this.W && t<=h.arrive+this.W){
+        this.cur=h;
+        h.peakL=Math.max(h.peakL,this.riseL); h.peakR=Math.max(h.peakR,this.riseR);
+        h.peakMin=Math.max(h.peakMin,Math.min(this.riseL,this.riseR));
+        if(this.riseL>=thr && h.tkL==null) h.tkL=t;
+        if(this.riseR>=thr && h.tkR==null) h.tkR=t;
+      }
+      if(t>h.arrive+this.W){
+        h.judged=true;
+        const bothUp=h.peakMin>=req, maxPk=Math.max(h.peakL,h.peakR);
+        const synced=(h.tkL!=null&&h.tkR!=null)&&Math.abs(h.tkL-h.tkR)<=eff.jumpSync;
+        let reason='';
+        if(bothUp&&synced){ h.res='ok'; this.record(true,'',now); }
+        else{
+          if(maxPk<thr) reason='ไม่ได้กระโดด';
+          else if(bothUp&&!synced) reason='สองเท้าไม่พร้อมกัน';
+          else if((h.peakL>=req)!==(h.peakR>=req) || Math.min(h.peakL,h.peakR)<thr) reason='ขึ้นเท้าเดียว';
+          else reason='กระโดดยังไม่สูงพอ';
+          h.res='bad'; this.record(false,reason,now);
+        }
+      }
+    }
+    if(this.hurdles.every(h=>h.judged) && now-this.t0>this.hurdles[this.total-1].arrive+this.W+900) this.finished=true;
+  }
+  draw(now){
+    const c=this.cal, req=this.req(), t=now-this.t0;
+    const floorY=(this.fl+this.fr)/2, barY=floorY-req;
+    ctx.save();
+    ctx.setLineDash([16,10]); ctx.lineWidth=4; ctx.strokeStyle='rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.moveTo(view.x,py(barY)); ctx.lineTo(view.x+view.w,py(barY)); ctx.stroke(); ctx.setLineDash([]);
+    label('เส้นกระโดด',view.x+view.w*0.1,py(barY)-view.h*0.02,'#fff','rgba(0,0,0,.45)',view.h*0.028);
+    ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(view.x,py(floorY)); ctx.lineTo(view.x+view.w,py(floorY)); ctx.stroke();
+    for(const h of this.hurdles){
+      const p=(t-(h.arrive-this.approach))/this.approach;      // 0 → 1 ถึงตัวเด็ก
+      const x0=1.08, x1=c.cx;
+      const nx=lerp(x0,x1,p);
+      if(nx>1.12||nx<-0.12||p<0) continue;
+      const hw=0.045, col=h.res==='ok'?'#14a05a':h.res==='bad'?'#d93a3a':'#ff9f1c';
+      ctx.strokeStyle=col; ctx.lineCap='round';
+      ctx.lineWidth=Math.max(6,view.h*0.014);
+      ctx.beginPath(); ctx.moveTo(px(nx-hw),py(floorY)); ctx.lineTo(px(nx-hw),py(barY)); ctx.moveTo(px(nx+hw),py(floorY)); ctx.lineTo(px(nx+hw),py(barY)); ctx.stroke();
+      ctx.lineWidth=Math.max(9,view.h*0.022);
+      ctx.beginPath(); ctx.moveTo(px(nx-hw),py(barY)); ctx.lineTo(px(nx+hw),py(barY)); ctx.stroke();
+    }
+    ctx.restore();
+    if(S.body){ for(const i of [27,28]){ const a=S.body.P[i]; const up=(i===27?this.riseL:this.riseR)>=req;
+      ctx.fillStyle=up?'#14a05a':'#fff'; ctx.beginPath(); ctx.arc(px(a.x),py(a.y),Math.max(8,view.h*0.016),0,7); ctx.fill(); } }
+    prompt(this.cur?'กระโดด!':'รอรั้วมาถึง…',this.cur?'#ff9f1c':'rgba(8,48,31,.86)',this.cur?1.2:1);
+  }
+  fxPos(){ return {x:S.body?S.body.hipMid.x:this.cal.cx,y:(this.fl+this.fr)/2}; }
+  hud(){ return `รั้วที่ ${Math.min(this.done+1,this.total)}/${this.total}`; }
+}
+
+/* ---- วิ่งตามจังหวะ ---- */
+class RunMode extends BaseMode{
+  constructor(cal){
+    super(cal); this.key='run'; this.title='วิ่งตามจังหวะ'; this.need=[11,12,23,24,15,16,25,26];
+    this.beat=60000/eff.bpm; this.countIn=4; this.total=eff.rounds*2;
+    const c=cal, hx=0.95*c.T/ASPECT, kx=0.38*c.T/ASPECT;
+    this.tg={
+      hand:{L:{x:c.cx-hx,y:c.shY+0.45*c.T},R:{x:c.cx+hx,y:c.shY+0.45*c.T}},
+      knee:{L:{x:c.cx-kx,y:c.hipY+0.10*c.T},R:{x:c.cx+kx,y:c.hipY+0.10*c.T}}
+    };
+    this.r=eff.runRadius*c.T;
+    this.beats=Array.from({length:this.total},(_,i)=>({
+      i, t:(this.countIn+i)*this.beat, hs:i%2===0?'R':'L', ks:i%2===0?'L':'R',
+      handT:null,kneeT:null,wrong:false,judged:false,res:null}));
+    this.t0=null; this.nextTick=0; this.tickN=0;
+  }
+  update(now,dt,body){
+    if(this.t0==null) this.t0=now;
+    const t=now-this.t0, P=body.P, c=this.cal;
+    while(this.nextTick<=t && this.tickN<this.countIn+this.total){ sfx.tick(this.tickN%2===0); this.tickN++; this.nextTick=this.tickN*this.beat; }
+    this.curBeat=null;
+    const wL=-0.35*this.beat, wR=0.40*this.beat;
+    const sideIdx=(joint,side)=> joint==='wr'?(side==='L'?15:16):(side==='L'?25:26);
+    for(const b of this.beats){
+      if(b.judged) continue;
+      if(t>=b.t+wL && t<=b.t+wR){
+        this.curBeat=b;
+        const hP=P[sideIdx('wr',b.hs)], kP=P[sideIdx('kn',b.ks)];
+        if(hP.v>=set.minVis && dist(hP,this.tg.hand[b.hs])<=this.r && b.handT==null) b.handT=t;
+        if(kP.v>=set.minVis && dist(kP,this.tg.knee[b.ks])<=this.r && b.kneeT==null) b.kneeT=t;
+        const sameK=P[sideIdx('kn',b.hs)];                     // เข่าข้างเดียวกับมือ = สลับข้างผิด
+        if(sameK.v>=set.minVis && dist(sameK,this.tg.knee[b.hs])<=this.r) b.wrong=true;
+      }
+      if(t>b.t+wR){
+        b.judged=true;
+        const tol=Math.min(300,0.45*this.beat);
+        let reason='';
+        if(b.handT!=null&&b.kneeT!=null&&Math.abs(b.handT-b.kneeT)<=tol){ b.res='ok'; this.record(true,'',now); }
+        else{
+          if(b.wrong&&b.kneeT==null) reason='สลับข้างไม่ถูก (ต้องมือขวาคู่เข่าซ้าย)';
+          else if(b.handT==null&&b.kneeT==null) reason='มือและเข่าไม่ถึงเป้า';
+          else if(b.handT==null) reason='มือไม่ถึงเป้า';
+          else if(b.kneeT==null) reason='ยกเข่าไม่สูงพอ';
+          else reason='มือกับเข่าไม่พร้อมกัน';
+          b.res='bad'; this.record(false,reason,now);
+        }
+      }
+    }
+    if(this.beats.every(b=>b.judged) && t>this.beats[this.total-1].t+wR+800) this.finished=true;
+  }
+  draw(now){
+    const t=now-(this.t0==null?now:this.t0), r=this.r*view.h;
+    const nextB=this.beats.find(b=>!b.judged);
+    const drawTarget=(pt,lit,approach,col)=>{
+      const x=px(pt.x), y=py(pt.y);
+      ctx.save();
+      ctx.globalAlpha=lit?1:.38;
+      ctx.fillStyle=lit?col:'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+      ctx.lineWidth=Math.max(4,view.h*0.008); ctx.strokeStyle='#fff'; ctx.stroke();
+      if(lit&&approach!=null){ ctx.globalAlpha=.9; ctx.beginPath(); ctx.arc(x,y,r*(1+2.2*(1-approach)),0,7); ctx.stroke(); }
+      ctx.restore();
+    };
+    const lit={};
+    if(nextB){
+      const pr=clamp(1-(nextB.t-t)/this.beat,0,1);
+      lit.hand=nextB.hs; lit.knee=nextB.ks; lit.p=pr;
+    }
+    for(const s of ['L','R']){
+      drawTarget(this.tg.hand[s], lit.hand===s, lit.p, '#ff7a59');
+      drawTarget(this.tg.knee[s], lit.knee===s, lit.p, '#ffc93c');
+    }
+    const hl=px(this.tg.hand.L.x), hr=px(this.tg.hand.R.x);
+    label('มือ',hl,py(this.tg.hand.L.y)-r-view.h*0.015,'#fff','rgba(0,0,0,.45)',view.h*0.026);
+    label('มือ',hr,py(this.tg.hand.R.y)-r-view.h*0.015,'#fff','rgba(0,0,0,.45)',view.h*0.026);
+    label('เข่า',px(this.tg.knee.L.x),py(this.tg.knee.L.y)+r+view.h*0.04,'#fff','rgba(0,0,0,.45)',view.h*0.026);
+    label('เข่า',px(this.tg.knee.R.x),py(this.tg.knee.R.y)+r+view.h*0.04,'#fff','rgba(0,0,0,.45)',view.h*0.026);
+    if(t<this.countIn*this.beat){
+      const n=this.countIn-Math.floor(t/this.beat);
+      prompt('เตรียม '+n,'#2f9bff',1.3);
+    } else if(nextB){
+      prompt(nextB.hs==='R'?'มือขวา + เข่าซ้าย':'มือซ้าย + เข่าขวา');
+    }
+  }
+  hud(){ return `จังหวะ ${Math.min(this.done+1,this.total)}/${this.total}`; }
+}
+const MODES={run:RunMode,slide:SlideMode,jump:JumpMode};
+
+/* ============================================================
+   วาดภาพ
+   ============================================================ */
+function containRect(W,H,a){ let w=W,h=W/a; if(h>H){h=H;w=H*a;} return {x:(W-w)/2,y:(H-h)/2,w,h}; }
+const px=nx=>view.x+nx*view.w, py=ny=>view.y+ny*view.h;
+/* ป้ายข้อความ: align = center | left | right (x เป็นจุดยึดตามด้านนั้น), maxW = กว้างสุด (ย่อฟอนต์อัตโนมัติ) */
+function label(text,x,y,fg,bg,size,align='center',maxW=0){
+  ctx.save(); let fs=Math.max(12,size);
+  ctx.font=`800 ${fs}px ${FONT}`; ctx.textBaseline='middle';
+  let tw=ctx.measureText(text).width;
+  if(maxW && tw+fs*0.9>maxW){ fs=Math.max(11,fs*maxW/(tw+fs*0.9)); ctx.font=`800 ${fs}px ${FONT}`; tw=ctx.measureText(text).width; }
+  const w=tw+fs*0.9, h=fs*1.5, c=align==='left'?x+w/2:align==='right'?x-w/2:x;
+  ctx.textAlign='center'; ctx.fillStyle=bg; roundRect(c-w/2,y-h/2,w,h,h/2); ctx.fill();
+  ctx.fillStyle=fg; ctx.fillText(text,c,y+fs*0.04); ctx.restore();
+}
+/* ข้อความบอกสิ่งที่ต้องทำ: มุมขวาบนของภาพ (ไม่บังตัวเด็ก) */
+function prompt(text,bg='rgba(8,48,31,.86)',k=1){
+  label(text,view.x+view.w*0.985,view.y+view.h*0.17,'#fff',bg,view.h*0.05*k,'right',view.w*0.42);
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function star(cx,cy,R,fill,stroke){
+  ctx.save(); ctx.beginPath();
+  for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?R*0.45:R; ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr); }
+  ctx.closePath(); ctx.fillStyle=fill; ctx.fill(); ctx.lineWidth=Math.max(3,R*0.08); ctx.strokeStyle=stroke; ctx.stroke(); ctx.restore();
+}
+function drawSkeleton(body){
+  if(!body||!set.skeleton) return;
+  const P=body.P;
+  ctx.save(); ctx.lineCap='round'; ctx.lineWidth=Math.max(4,view.h*0.008); ctx.strokeStyle='rgba(120,255,220,.95)';
+  for(const [a,b] of BONES){ if(P[a].v<set.minVis||P[b].v<set.minVis) continue; ctx.beginPath(); ctx.moveTo(px(P[a].x),py(P[a].y)); ctx.lineTo(px(P[b].x),py(P[b].y)); ctx.stroke(); }
+  ctx.fillStyle='#fff';
+  for(const i of [11,12,13,14,15,16,23,24,25,26,27,28]){ if(P[i].v<set.minVis) continue; ctx.beginPath(); ctx.arc(px(P[i].x),py(P[i].y),Math.max(4,view.h*0.008),0,7); ctx.fill(); }
+  if(P[0].v>=set.minVis){ ctx.strokeStyle='rgba(120,255,220,.95)'; ctx.beginPath(); ctx.arc(px(P[0].x),py(P[0].y),view.h*0.04,0,7); ctx.stroke(); }
+  ctx.restore();
+}
+function resize(){
+  dpr=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.round(innerWidth*dpr); canvas.height=Math.round(innerHeight*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  view=containRect(innerWidth,innerHeight,ASPECT);
+}
+addEventListener('resize',resize);
+
+/* ฉากสนามกีฬา: สนามหญ้าเป็นริ้ว และลู่วิ่งสีอิฐเห็นเป็นมุมมองไปไกล */
+function drawStadium(W,H){
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0a4a2f'); g.addColorStop(.6,'#0f6b43'); g.addColorStop(1,'#0a3d27');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,.045)';
+  for(let i=0;i<18;i+=2) ctx.fillRect(i*W/18,0,W/18,H*0.6);
+  const vy=H*0.6, xl=W*0.34, xr=W*0.66, bl=-W*0.3, br=W*1.3;
+  const tg=ctx.createLinearGradient(0,vy,0,H); tg.addColorStop(0,'#8e3822'); tg.addColorStop(1,'#c4502f');
+  ctx.fillStyle=tg; ctx.beginPath(); ctx.moveTo(xl,vy); ctx.lineTo(xr,vy); ctx.lineTo(br,H); ctx.lineTo(bl,H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.85)';
+  for(let k=0;k<=4;k++){ const u=k/4; ctx.lineWidth=2+u*0+ (k===0||k===4?3:2);
+    ctx.beginPath(); ctx.moveTo(lerp(xl,xr,u),vy); ctx.lineTo(lerp(bl,br,u),H); ctx.stroke(); }
+  ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fillRect(0,vy-2,W,3);
+}
+const REDUCED=matchMedia('(prefers-reduced-motion:reduce)').matches;
+/* หน้าปก: ไฟสนามกวาด เส้นลู่วิ่งพุ่งเข้าหาผู้ชม และประกายลอยขึ้น */
+function star4(x,y,r){ ctx.beginPath(); ctx.moveTo(x,y-r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.quadraticCurveTo(x,y,x,y+r); ctx.quadraticCurveTo(x,y,x-r,y); ctx.quadraticCurveTo(x,y,x,y-r); ctx.fill(); }
+function drawIntroFx(W,H,now){
+  const t=now/1000, vy=H*0.6, cx=W/2, xl=W*0.34, xr=W*0.66, bl=-W*0.3, br=W*1.3;
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const [ox,ph] of [[W*0.06,0],[W*0.94,Math.PI*0.8]]){
+    const tx=cx+Math.sin(t*0.55+ph)*W*0.26, ty=vy+H*0.1, sp=W*0.12;
+    const g=ctx.createLinearGradient(ox,0,tx,ty); g.addColorStop(0,'rgba(255,238,160,.26)'); g.addColorStop(1,'rgba(255,238,160,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(ox-6,-10); ctx.lineTo(ox+6,-10); ctx.lineTo(tx+sp,ty); ctx.lineTo(tx-sp,ty); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  ctx.save(); ctx.fillStyle='rgba(255,255,255,.42)';
+  for(let lane=0;lane<4;lane++){ const u=(lane+.5)/4;
+    for(let k=0;k<5;k++){ const p=(t*0.33+k/5+lane*0.07)%1, a=p*p, b2=Math.min(1,p+0.06)**2;
+      const X=q=>lerp(lerp(xl,xr,u),lerp(bl,br,u),q), Y=q=>lerp(vy,H,q), w1=1+a*8, w2=1+b2*8;
+      ctx.beginPath(); ctx.moveTo(X(a)-w1/2,Y(a)); ctx.lineTo(X(a)+w1/2,Y(a)); ctx.lineTo(X(b2)+w2/2,Y(b2)); ctx.lineTo(X(b2)-w2/2,Y(b2)); ctx.closePath(); ctx.fill(); } }
+  for(let i=0;i<30;i++){
+    const x=(Math.sin(i*97.13)*0.5+0.5)*W+Math.sin(t*0.7+i)*12, sp=0.035+((i*37)%10)/260, y=H*0.66-((t*sp+(i*0.137)%1)%1)*H*0.66, tw=0.5+0.5*Math.sin(t*3.2+i*1.7);
+    ctx.globalAlpha=0.12+0.6*tw; ctx.fillStyle=i%3?'#ffffff':'#ffc61a'; star4(x,y,3+(i%4)*1.6);
+  }
+  ctx.restore();
+}
+/* ประกายดาวเมื่อทำท่าถูก */
+function spark(pos){
+  if(REDUCED||S.manual||!pos) return; const born=performance.now();
+  for(let i=0;i<22;i++){ const a=Math.random()*6.283, v=0.12+Math.random()*0.3; S.fx.push({x:pos.x,y:pos.y,vx:Math.cos(a)*v/ASPECT,vy:Math.sin(a)*v-0.06,born,c:i%3?'#ffc61a':'#ffffff',r:0.012+Math.random()*0.02}); }
+}
+function drawFx(now){
+  if(!S.fx.length) return; ctx.save();
+  S.fx=S.fx.filter(f=>now-f.born<750);
+  for(const f of S.fx){ const u=(now-f.born)/750; ctx.globalAlpha=1-u*u; ctx.fillStyle=f.c; star4(px(f.x+f.vx*u),py(f.y+f.vy*u+0.22*u*u),f.r*view.h*(1-u*0.5)); }
+  ctx.restore();
+}
+function render(now){
+  const W=innerWidth,H=innerHeight; ctx.setTransform(dpr,0,0,dpr,0,0);
+  view=containRect(W,H,ASPECT);
+  const inGame = S.screen==='calibrate'||S.screen==='count'||S.screen==='play';
+  drawStadium(W,H);
+  if(S.screen==='intro'&&!REDUCED) drawIntroFx(W,H,now);
+  if(!inGame) return;
+  if(S.input==='camera' && camReady){
+    ctx.save(); ctx.translate(view.x+view.w,view.y); ctx.scale(-1,1); ctx.drawImage(cam,0,0,view.w,view.h); ctx.restore();
+    ctx.fillStyle='rgba(8,20,42,.18)'; ctx.fillRect(view.x,view.y,view.w,view.h);
+  } else {
+    const gg=ctx.createLinearGradient(0,view.y,0,view.y+view.h); gg.addColorStop(0,'#12583a'); gg.addColorStop(1,'#0a3d27');
+    ctx.fillStyle=gg; ctx.fillRect(view.x,view.y,view.w,view.h);
+    ctx.fillStyle='rgba(216,80,45,.55)'; ctx.fillRect(view.x,py(0.84),view.w,view.h*0.16);
+    ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillRect(view.x,py(0.84),view.w,3);
+    label('โหมดทดลอง (จำลองท่าด้วยคีย์บอร์ด)',view.x+view.w*0.015,view.y+view.h*0.965,'#fff','rgba(0,0,0,.4)',view.h*0.024,'left');
+  }
+  drawSkeleton(S.body);
+  if(S.screen==='calibrate') drawCalib(now);
+  if(S.screen==='count') drawCount();
+  if(S.screen==='play' && S.mode){ S.mode.draw(S.gnow); drawHud(); drawFx(now); }
+  if(S.screen==='play' && S.toast && S.gnow<S.toast.until){
+    const age=S.gnow-(S.toast.from||0), k=1+0.3*Math.max(0,1-age/200), ax=view.x+view.w*0.985, ay=view.y+view.h*0.07;
+    ctx.save(); ctx.translate(ax,ay); ctx.scale(k,k); ctx.translate(-ax,-ay);
+    label(S.toast.text,ax,ay,'#fff',S.toast.color,view.h*0.06,'right',view.w*0.42); ctx.restore();
+  }
+  if(S.screen==='play' && S.combo && S.gnow<S.combo.until){
+    label('ต่อเนื่อง '+S.combo.n+' ครั้ง!',view.x+view.w*0.015,view.y+view.h*0.29,'#0b2a1d','#ffc61a',view.h*0.04,'left',view.w*0.3);
+  }
+  if((S.screen==='play'||S.screen==='calibrate') && S.people>1){
+    label('มีคนอยู่ในภาพมากกว่า 1 คน — ให้เหลือเด็กที่เล่นคนเดียว',view.x+view.w/2,view.y+view.h*0.94,'#0b2a1d','#ffc61a',view.h*0.034,'center',view.w*0.8);
+  }
+  if(S.screen==='play' && !S.tracked){
+    ctx.fillStyle='rgba(8,20,42,.6)'; ctx.fillRect(view.x,view.y,view.w,view.h);
+    label('ไม่เห็นตัวเด็ก — ยืนให้เห็นทั้งตัว (เกมหยุดชั่วคราว)',view.x+view.w/2,view.y+view.h/2,'#fff','#d93a3a',view.h*0.045);
+  }
+}
+function drawCalib(now){
+  const cx=view.x+view.w*0.86, cy=view.y+view.h*0.46, R=view.h*0.1;
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.setLineDash([14,10]); ctx.lineWidth=4;
+  roundRect(view.x+view.w*0.3,view.y+view.h*0.04,view.w*0.4,view.h*0.92,view.h*0.1); ctx.stroke(); ctx.setLineDash([]);
+  ctx.lineWidth=view.h*0.02; ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.stroke();
+  ctx.strokeStyle='#14a05a'; ctx.beginPath(); ctx.arc(cx,cy,R,-Math.PI/2,-Math.PI/2+Math.PI*2*S.calib.progress); ctx.stroke();
+  ctx.restore();
+  label('ตั้งค่าท่ายืน',view.x+view.w*0.985,view.y+view.h*0.07,'#fff','rgba(8,48,31,.88)',view.h*0.04,'right',view.w*0.42);
+  prompt(S.calib.msg);
+  label('นิ่ง ๆ 3 วินาที',cx,cy+R+view.h*0.07,'#fff','rgba(8,48,31,.88)',view.h*0.032,'center',view.w*0.26);
+  if(S.input==='camera'){
+    const warn=[]; if(S.fps&&S.fps<14) warn.push('เครื่องช้า ปิดโปรแกรมอื่น'); if(S.light!=null&&S.light<55) warn.push('แสงน้อย เปิดไฟเพิ่ม'); if(S.light!=null&&S.light>215) warn.push('แสงจ้าเกินไป');
+    const txt=(S.fps?`ภาพ ${Math.round(S.fps)} เฟรม/วินาที`:'กำลังเริ่มตรวจ')+(warn.length?' · '+warn.join(' · '):' · แสงพอดี');
+    label(txt,view.x+view.w*0.015,view.y+view.h*0.955,'#fff',warn.length?'#c9402b':'rgba(8,48,31,.88)',view.h*0.028,'left',view.w*0.6);
+  }
+}
+function drawCount(){
+  const n=Math.ceil((2400-S.countT)/800), txt=n>0?String(n):'ลุย!';
+  const ph=(S.countT%800)/800, k=1+0.22*Math.max(0,1-ph*4), cx=view.x+view.w/2, cy=view.y+view.h/2, R=view.h*0.17*k;
+  ctx.save(); ctx.fillStyle='rgba(8,48,31,.86)'; ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.fill();
+  ctx.lineWidth=view.h*0.014; ctx.strokeStyle='#ffc61a'; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`italic 800 ${view.h*0.2*k}px ${FONT}`; ctx.fillText(txt,cx,cy+view.h*0.012);
+  ctx.restore();
+}
+function drawHud(){
+  const m=S.mode, W=view.w, H=view.h, x=view.x+W*0.015, y=view.y+H*0.035, w=W*0.27, h=H*0.2, pad=W*0.012;
+  ctx.save();
+  ctx.fillStyle='rgba(8,48,31,.9)'; roundRect(x,y,w,h,H*0.02); ctx.fill();
+  ctx.fillStyle='#ffc61a'; roundRect(x,y,W*0.006,h,H*0.01); ctx.fill();
+  ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.textAlign='left';
+  ctx.font=`italic 700 ${H*0.034}px ${FONT}`; ctx.fillText(m.title,x+pad+W*0.004,y+h*0.2,w-pad*2);
+  const n=m.total, avail=w-pad*2-W*0.004, gap=avail/n, r=Math.min(H*0.014,gap*0.38);
+  for(let i=0;i<n;i++){
+    const cx=x+pad+W*0.004+gap*(i+.5), cy=y+h*0.5, res=m.results[i];
+    ctx.fillStyle=res?(res.ok?'#2bd47d':'#ff5a52'):(i===m.done?'#ffc61a':'rgba(255,255,255,.28)');
+    ctx.beginPath(); ctx.arc(cx,cy,res||i===m.done?r:r*0.8,0,7); ctx.fill();
+  }
+  ctx.fillStyle='#ffc61a'; ctx.font=`800 ${H*0.05}px ${FONT}`; ctx.fillText('★ '+m.good*10,x+pad+W*0.004,y+h*0.8);
+  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.textAlign='right'; ctx.font=`600 ${H*0.026}px ${FONT}`; ctx.fillText(m.hud(),x+w-pad,y+h*0.8,w*0.5);
+  ctx.restore();
+}
+
+/* ============================================================
+   ลูปหลัก
+   ============================================================ */
+let lastFrame=0;
+/* วัดความสว่างภาพจากกล้อง (ภาพย่อ 32×18 พิกเซล) เพื่อเตือนครูเมื่อแสงน้อยหรือจ้าเกินไป */
+const lightCv=document.createElement('canvas'); lightCv.width=32; lightCv.height=18; const lightCx=lightCv.getContext('2d',{willReadFrequently:true});
+let lastLight=0;
+function sampleLight(wall){
+  if(wall-lastLight<700) return; lastLight=wall;
+  try{ lightCx.drawImage(cam,0,0,32,18); const d=lightCx.getImageData(0,0,32,18).data; let s=0; for(let i=0;i<d.length;i+=4) s+=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; S.light=s/(d.length/4); }catch(e){}
+}
+function tick(dt){
+  /* 1) รับท่าทาง */
+  if(S.input==='sim'){
+    sim.update(dt); S.simT+=dt; S.body=sim.pose(S.simT); S.bodyAge=0; S.tracked=true;
+  } else if(landmarker && camReady && cam.readyState>=2){
+    S.bodyAge+=dt;
+    if(cam.currentTime!==lastVT){
+      lastVT=cam.currentTime;
+      let ts=performance.now(); if(ts<=lastDetT) ts=lastDetT+1; lastDetT=ts;
+      try{
+        const r=landmarker.detectForVideo(cam,ts), L=r.landmarks||[];
+        const wall=performance.now(); if(S.lastDet){ const f=1000/Math.max(1,wall-S.lastDet); S.fps=S.fps?S.fps*0.92+f*0.08:f; } S.lastDet=wall;
+        if(L.length){
+          const tor=lm=>Math.hypot((lm[11].x-lm[23].x)*ASPECT,lm[11].y-lm[23].y);
+          let best=0,bs=-1; L.forEach((lm,i)=>{ const s=tor(lm)-Math.abs((lm[23].x+lm[24].x)/2-.5)*0.2; if(s>bs){bs=s;best=i;} });
+          S.people=L.filter(lm=>tor(lm)>0.06).length;          // นับเฉพาะคนที่ตัวใหญ่พอ (ไม่นับคนไกลมาก)
+          const nhx=1-(L[best][23].x+L[best][24].x)/2; if(S.body&&Math.abs(nhx-S.body.hipMid.x)>0.2) filt=null;   // เปลี่ยนคน: เริ่มตัวกรองใหม่
+          S.body=bodyFromCamera(L[best],ts); S.bodyAge=0;
+        } else S.people=0;
+        sampleLight(wall);
+      }catch(e){ console.warn(e); }
+    }
+    if(S.bodyAge>700){ S.body=null; filt=null; }
+  }
+  /* 2) ตามสถานะหน้าจอ */
+  if(S.screen==='calibrate'){
+    const cal=S.calib.update(S.body,dt);
+    if(cal){ S.cal=cal; startCountdown(); }
+  } else if(S.screen==='count'){
+    const before=Math.ceil((2400-S.countT)/800); S.countT+=dt; const after=Math.ceil((2400-S.countT)/800);
+    if(after!==before && after>0) sfx.tick(false);
+    if(S.countT>=2400){ startPlay(); }
+  } else if(S.screen==='play'){
+    const m=S.mode, seen = S.input==='sim' || has(S.body,m.need);
+    S.lostMs = seen?0:S.lostMs+dt;
+    S.tracked = S.lostMs<300;               // หลุดกรอบสั้น ๆ (<0.3 วินาที) ไม่ต้องหยุดเกม
+    if(seen){
+      S.gnow+=dt;
+      m.update(S.gnow,dt,S.body);
+      if(m.finished) finishGame();
+    }
+  }
+}
+function loop(now){
+  const dt=Math.min(100,now-(lastFrame||now)); lastFrame=now;
+  if(!S.manual){ tick(dt); }
+  render(now);
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   ควบคุมการเล่น
+   ============================================================ */
+function show(id){ $$('.panel').forEach(p=>p.classList.toggle('show',p.id===id)); }
+function hideAll(){ $$('.panel').forEach(p=>p.classList.remove('show')); }
+function setStatus(msg,err=false,keep=false){
+  const el=$('#status'); if(!msg){ el.classList.remove('show'); return; }
+  el.textContent=msg; el.classList.toggle('err',err); el.classList.add('show');
+  if(!keep && !err) setTimeout(()=>{ if(el.textContent===msg) el.classList.remove('show'); },2500);
+}
+/* เติมรายการกล้องในดรอปดาวน์ (เช่น กล้องแล็ปท็อป + กล้องมือถือที่ต่อผ่านแอปกล้องเสมือน เพื่อความคมชัดกว่า) */
+async function refreshCamList(){
+  try{
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    const sel=$('#selCam'), wrap=$('#camPickWrap');
+    if(devs.length<2){ wrap.style.display='none'; return; }
+    const cur=sel.value;
+    sel.innerHTML=devs.map((d,i)=>`<option value="${d.deviceId}">${d.label||('กล้อง '+(i+1))}</option>`).join('');
+    if(devs.some(d=>d.deviceId===cur)) sel.value=cur;
+    wrap.style.display='';
+  }catch(e){}
+}
+navigator.mediaDevices?.addEventListener?.('devicechange',refreshCamList);
+/* เปลี่ยนกล้องหลังเปิดกล้องไปแล้ว: ปิดกล้องเดิม แล้วให้เปิดตัวใหม่ตอนเริ่มเกมครั้งถัดไป */
+function closeCamera(){ try{ cam.srcObject&&cam.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){} cam.srcObject=null; camReady=false; filt=null; S.body=null; S.fps=0; S.light=null; }
+/* เก็บไฟล์โมเดลไว้ในเครื่อง (IndexedDB) หลังโหลดครั้งแรก ครั้งต่อไปไม่ต้องดาวน์โหลดซ้ำ */
+function idbOpen(){ return new Promise((res,rej)=>{ const r=indexedDB.open('mg_cache',1); r.onupgradeneeded=()=>r.result.createObjectStore('f'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function getModelBuf(){
+  try{
+    const db=await idbOpen();
+    const got=await new Promise(res=>{ const q=db.transaction('f').objectStore('f').get('pose_lite'); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); });
+    if(got&&got.byteLength>1e6) return new Uint8Array(got);
+    const resp=await fetch(MODEL_URL); if(!resp.ok) throw new Error('model '+resp.status);
+    const ab=await resp.arrayBuffer();
+    try{ db.transaction('f','readwrite').objectStore('f').put(ab,'pose_lite'); }catch(e){}
+    return new Uint8Array(ab);
+  }catch(e){ return null; }
+}
+async function ensureCamera(){
+  if(camReady && landmarker) return true;
+  try{
+    setStatus('กำลังขอใช้กล้อง… กด “อนุญาต” ที่เบราว์เซอร์',false,true);
+    if(!camReady){
+      const picked=$('#selCam').value;
+      const vc=picked?{deviceId:{exact:picked},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720},facingMode:'user'};
+      const stream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
+      cam.srcObject=stream; await cam.play();
+      ASPECT=(cam.videoWidth/cam.videoHeight)||16/9; camReady=true; resize();
+      await refreshCamList();
+      try{ const id=stream.getVideoTracks()[0].getSettings().deviceId; if(id) $('#selCam').value=id; }catch(e){}
+    }
+  }catch(e){
+    setStatus('เปิดกล้องไม่ได้: '+(e&&e.name==='NotAllowedError'?'ยังไม่ได้อนุญาตให้ใช้กล้อง':'ไม่พบกล้องหรือกล้องถูกใช้งานอยู่')+' — ลองโหมด “ทดลองไม่มีกล้อง” ได้',true);
+    return false;
+  }
+  try{
+    setStatus('กำลังโหลดโมเดลตรวจท่าทาง (ครั้งแรกใช้เวลาสักครู่ ต้องต่ออินเทอร์เน็ต)…',false,true);
+    const mod=await import(MP_BASE+'/vision_bundle.mjs');
+    const fileset=await mod.FilesetResolver.forVisionTasks(MP_BASE+'/wasm');
+    const buf=await getModelBuf();
+    const opts=d=>({baseOptions:buf?{modelAssetBuffer:buf,delegate:d}:{modelAssetPath:MODEL_URL,delegate:d},runningMode:'VIDEO',numPoses:2,
+      minPoseDetectionConfidence:.5,minPosePresenceConfidence:.5,minTrackingConfidence:.5});
+    try{ landmarker=await mod.PoseLandmarker.createFromOptions(fileset,opts('GPU')); }
+    catch(e){ landmarker=await mod.PoseLandmarker.createFromOptions(fileset,opts('CPU')); }
+    setStatus('');
+    return true;
+  }catch(e){
+    console.error(e);
+    setStatus('โหลดโมเดลไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ต แล้วลองใหม่ หรือใช้โหมด “ทดลองไม่มีกล้อง”',true);
+    return false;
+  }
+}
+async function startFlow(modeKey){
+  if(S.busy) return;                       // กันกดซ้ำระหว่างรอเปิดกล้อง/โหลดโมเดล
+  S.busy=true;
+  try{
+    audio();
+    S.modeKey=modeKey; S.student=+$('#selStudent').value; S.phase=$('#selPhase').value; S.level=$('#selLevel').value;
+    S.input=document.querySelector('input[name=src]:checked').value;
+    if(S.input==='camera'){ const ok=await ensureCamera(); if(!ok) return; if(S.screen!=='menu') return; }
+    else { sim.reset(); S.simT=0; }
+    beginCalibration();
+  } finally { S.busy=false; }
+}
+function beginCalibration(){
+  hideAll(); $('#hudbtns').classList.add('show');
+  S.screen='calibrate'; S.calib=new Calibrator(); S.toast=null; S.combo=null; S.lostMs=0; S.people=0;
+  if(S.input==='sim'){ sim.reset(); }
+}
+function startCountdown(){ S.screen='count'; S.countT=0; if(S.input==='sim'){ sim.cx=S.cal.cx; } }
+function startPlay(){
+  eff=buildEff(S.level); S.screen='play'; S.gnow=0; S.lostMs=0; S.mode=new MODES[S.modeKey](S.cal); S.toast=null; S.combo=null; sfx.go();
+}
+function backToMenu(){
+  S.screen='menu'; S.mode=null; S.toast=null; updateRoom(); $('#hudbtns').classList.remove('show'); show('pMenu'); setStatus('');
+}
+
+/* ---------- สรุปผลและบันทึก ---------- */
+const TIPS={
+  'ไขว้ขา':'สไลด์ด้านข้าง: ก้าวเท้าข้างที่ไปก่อน แล้วให้เท้าอีกข้างตามไปชิด ห้ามก้าวไขว้ข้ามกัน',
+  'ไปไม่ถึงดาวทันเวลา':'ก้าวสไลด์ด้านข้างให้เร็วขึ้น พาลำตัว (จุดเหลือง) ไปให้ถึงดาวก่อนวงกลมหมดเวลา เอื้อมมือแตะไม่นับ',
+  'ไม่ได้กระโดด':'ย่อเข่าเล็กน้อยแล้วถีบพื้นขึ้นให้เท้าลอยจากพื้นทั้งสองข้าง',
+  'สองเท้าไม่พร้อมกัน':'ออกแรงถีบพื้นพร้อมกันทั้งสองเท้า และลงพื้นพร้อมกัน',
+  'ขึ้นเท้าเดียว':'ใช้สองเท้าถีบพร้อมกัน ไม่ใช่ก้าวกระโดดทีละข้าง',
+  'กระโดดยังไม่สูงพอ':'ย่อเข่าแล้วเหวี่ยงแขนขึ้นช่วย กระโดดให้เท้าพ้นเส้นกระโดด',
+  'สลับข้างไม่ถูก (ต้องมือขวาคู่เข่าซ้าย)':'แขนกับขาต้องสลับข้างกัน: มือขวาไปพร้อมเข่าซ้าย แล้วสลับเป็นมือซ้ายพร้อมเข่าขวา',
+  'มือและเข่าไม่ถึงเป้า':'ยกเข่าให้สูงระดับเอว และยกมือให้ถึงเป้าระดับอกตามจังหวะ',
+  'มือไม่ถึงเป้า':'เหวี่ยงแขนให้ถึงเป้าที่ระดับอก',
+  'ยกเข่าไม่สูงพอ':'ยกเข่าให้สูงถึงระดับเอว',
+  'มือกับเข่าไม่พร้อมกัน':'ให้มือกับเข่าเคลื่อนพร้อมกันตามจังหวะเดียวกัน'
+};
+const MODE_NAME={run:'วิ่งตามจังหวะ',slide:'สไลด์เก็บดาว',jump:'กระโดดข้ามรั้ว'};
+const PHASE_NAME={train:'ฝึก',pre:'ก่อนเรียน (Pre)',post:'หลังเรียน (Post)'};
+const LV_NAME={easy:'ง่าย',normal:'ปกติ',hard:'ท้าทาย'};
+const MEDAL_NAME={gold:'เหรียญทอง',silver:'เหรียญเงิน',bronze:'เหรียญทองแดง',none:'ฝึกต่ออีกนิดนะ'};
+function medalSVG(kind){
+  const c={gold:['#ffc61a','#d99a00'],silver:['#d5dbe1','#9aa5af'],bronze:['#dc9a5f','#a96429'],none:['#e7eadf','#b9c0ae']}[kind];
+  return `<svg class="medal" viewBox="0 0 100 124" role="img" aria-label="${MEDAL_NAME[kind]}"><path d="M28 0 L50 40 L72 0 L88 0 L58 54 L42 54 L12 0Z" fill="#d8502d"/><path d="M50 40 L58 54 L42 54Z" fill="#a83b20"/><circle cx="50" cy="82" r="36" fill="${c[1]}"/><circle cx="50" cy="82" r="29" fill="${c[0]}"/><path d="M50 62 l5.8 12 13 1.9 -9.4 9.2 2.2 13 -11.6 -6.1 -11.6 6.1 2.2 -13 -9.4 -9.2 13 -1.9z" fill="${c[1]}" opacity="${kind==='none'?.35:1}"/></svg>`;
+}
+/* ดอกไม้กระดาษ (confetti) เมื่อได้เหรียญทองหรือทำลายสถิติตัวเอง */
+const cfc=$('#confetti'), cfx=cfc.getContext('2d'); let cfParts=[], cfRun=false;
+function burst(){
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  cfc.width=innerWidth; cfc.height=innerHeight; const cols=['#ffc61a','#d8502d','#1f74e0','#14a05a','#fbfaf3'];
+  cfParts=Array.from({length:150},()=>({x:innerWidth/2+(Math.random()-.5)*innerWidth*.3,y:innerHeight*.32,vx:(Math.random()-.5)*15,vy:-Math.random()*13-3,r:Math.random()*5+4,c:cols[Math.random()*5|0],a:Math.random()*6,va:(Math.random()-.5)*.4,life:1}));
+  if(!cfRun){ cfRun=true; requestAnimationFrame(cfStep); }
+}
+function cfStep(){
+  cfx.clearRect(0,0,cfc.width,cfc.height);
+  for(const p of cfParts){ p.vy+=.35; p.x+=p.vx; p.y+=p.vy; p.vx*=.995; p.a+=p.va; p.life-=.0075;
+    cfx.save(); cfx.globalAlpha=Math.max(0,p.life); cfx.translate(p.x,p.y); cfx.rotate(p.a); cfx.fillStyle=p.c; cfx.fillRect(-p.r,-p.r/2,p.r*2,p.r); cfx.restore(); }
+  cfParts=cfParts.filter(p=>p.life>0&&p.y<cfc.height+20);
+  if(cfParts.length) requestAnimationFrame(cfStep); else { cfRun=false; cfx.clearRect(0,0,cfc.width,cfc.height); }
+}
+/* ดาวสะสมของห้อง: รวมคะแนนจากเกมของทุกคน (ไม่นับโหมดทดลองไม่มีกล้องและเลขที่ 0) */
+function updateRoom(){
+  const logs=store.get('mg_logs_v1',[]).filter(l=>l.student>0&&l.input!=='sim');
+  const total=logs.reduce((a,l)=>a+(l.score||0),0), step=500, goal=Math.floor(total/step)*step+step, p=(total-(goal-step))/step*100;
+  $('#roomStars').textContent=total.toLocaleString('en-US'); $('#roomGoal').textContent='เป้าถัดไป '+goal.toLocaleString('en-US');
+  $('#laneFill').style.width=p+'%'; $('#laneDot').style.left=Math.min(97,Math.max(3,p))+'%';
+}
+function finishGame(){
+  const m=S.mode, att=m.done, good=m.good, pct=att?Math.round(good/att*100):0;
+  const reasons={}; m.results.forEach(r=>{ if(!r.ok) reasons[r.reason]=(reasons[r.reason]||0)+1; });
+  const prev=store.get('mg_logs_v1',[]).filter(l=>l.student===S.student&&l.mode===m.key&&l.input!=='sim');
+  const prevBest=prev.length?Math.max(...prev.map(l=>l.pct)):null;
+  const rec={id:Date.now(),ts:new Date().toLocaleString('sv-SE').replace('T',' '),student:S.student,phase:S.phase,mode:m.key,
+    attempts:att,correct:good,pct,score:good*10,reasons,input:S.input,level:S.level,bestStreak:m.best};
+  S.lastResult=rec;
+  let saved='ทดลองเล่น (เลขที่ 0) ไม่บันทึกผล';
+  if(S.student>0){ const logs=store.get('mg_logs_v1',[]); logs.push(rec); store.set('mg_logs_v1',logs); saved=`บันทึกผลแล้ว: เลขที่ ${S.student} · ${PHASE_NAME[S.phase]} · ${MODE_NAME[m.key]} · ระดับ${LV_NAME[S.level]}`; }
+  if(S.input==='sim' && S.student>0) saved+=' (ข้อมูลจากโหมดทดลองไม่มีกล้อง ควรลบก่อนใช้จริง)';
+  const kind=pct>=85?'gold':pct>=60?'silver':pct>=30?'bronze':'none';
+  const isPB=S.student>0&&S.input!=='sim'&&prevBest!=null&&pct>prevBest;
+  $('#rTitle').textContent=`${MODE_NAME[m.key]} จบเกม`;
+  $('#rMedal').innerHTML=medalSVG(kind)+`<div class="disp" style="font-weight:700;font-size:clamp(15px,2.4vmin,22px);margin-top:4px">${MEDAL_NAME[kind]}</div>`;
+  $('#rPB').innerHTML=isPB?`<span class="pb">สถิติใหม่ของเลขที่ ${S.student}! เดิม ${prevBest}%</span>`:'';
+  const pe=$('#rPct'); pe.textContent=pct;
+  if(!REDUCED&&!S.manual&&pct>0){ const t0=performance.now(); pe.textContent=0; const cu=n=>{ const u=Math.min(1,(n-t0)/800); pe.textContent=Math.round(pct*(1-Math.pow(1-u,3))); if(u<1&&S.screen==='result') requestAnimationFrame(cu); else pe.textContent=pct; }; requestAnimationFrame(cu); }
+  $('#rDetail').textContent=`ท่าถูกต้อง ${good} จาก ${att} ครั้ง · คะแนน ${good*10}`+(m.best>=3?` · ถูกต่อเนื่องสูงสุด ${m.best} ครั้ง`:'');
+  $('#rPips').innerHTML=m.results.map((r,i)=>`<i class="${r.ok?'ok':'no'}" style="--i:${i}" title="ครั้งที่ ${i+1}">${r.ok?'✓':'✕'}</i>`).join('');
+  const tips=Object.entries(reasons).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([r,n])=>`<div class="tip"><b>${r}</b> (${n} ครั้ง)<br>${TIPS[r]||''}</div>`).join('');
+  $('#rTips').innerHTML=tips||'<div class="tip">ทำท่าถูกต้องทุกครั้งเลย เก่งมาก!</div>';
+  $('#rSaved').textContent=saved;
+  const nxt=$('#btnNext'); const hasNext=S.student>0&&S.student<N_STUDENTS; nxt.classList.toggle('hide',!hasNext);
+  if(hasNext) nxt.textContent=`คนถัดไป (เลขที่ ${S.student+1})`;
+  S.screen='result'; $('#hudbtns').classList.remove('show'); show('pResult'); updateRoom();
+  if(kind==='gold'||isPB){ sfx.win(); burst(); }
+}
+
+/* ---------- ตั้งค่า / ผล ---------- */
+function buildSettings(){
+  const box=$('#setBox'); box.innerHTML='';
+  const sd=document.createElement('div'); sd.className='set';
+  for(const [k,title,desc,min,max,step] of SET_UI){
+    const l=document.createElement('div'); l.innerHTML=`<b>${title}</b>${desc?`<small>${desc}</small>`:''}`;
+    const inp=document.createElement('input'); inp.type='range'; inp.min=min; inp.max=max; inp.step=step; inp.value=set[k];
+    const val=document.createElement('span'); val.textContent=set[k];
+    inp.oninput=()=>{ set[k]=+inp.value; val.textContent=inp.value; saveSet(); };
+    sd.append(l,inp,val);
+  }
+  const mk=(k,title)=>{ const l=document.createElement('div'); l.innerHTML=`<b>${title}</b>`;
+    const c=document.createElement('input'); c.type='checkbox'; c.checked=!!set[k]; c.onchange=()=>{ set[k]=c.checked?1:0; saveSet(); };
+    const e=document.createElement('span'); sd.append(l,c,e); };
+  mk('skeleton','แสดงเส้นโครงกระดูกบนจอ'); mk('sound','เปิดเสียงเกม');
+  box.append(sd);
+}
+const MODE_COL={run:'#e2552d',slide:'#1f74e0',jump:'#14a05a'};
+function modeBy(logs,m){ const by={}; logs.filter(l=>l.mode===m&&l.student>0).sort((a,b)=>a.id-b.id).forEach(l=>{ (by[l.student]=by[l.student]||{})[l.phase]=l; }); return by; }
+const dlt=v=>v==null?'<td class="n zz">–</td>':v>0?`<td class="n up">▲ +${v}</td>`:v<0?`<td class="n dn">▼ ${v}</td>`:'<td class="n zz">0</td>';
+function buildLogs(){
+  const logs=store.get('mg_logs_v1',[]);
+  /* สรุปรายโหมด */
+  $('#kpiCards').innerHTML=['run','slide','jump'].map(m=>{
+    const by=modeBy(logs,m), pre=[],post=[],gain=[];
+    Object.values(by).forEach(r=>{ if(r.pre)pre.push(r.pre.pct); if(r.post)post.push(r.post.pct); if(r.pre&&r.post)gain.push(r.post.pct-r.pre.pct); });
+    const body=(pre.length||post.length)
+      ? `<div class="v">${fmt(mean(pre),0)}% → ${fmt(mean(post),0)}%</div><small>ก่อน ${pre.length} คน · หลัง ${post.length} คน · เทียบได้ ${gain.length} คน${gain.length?` · เปลี่ยน ${mean(gain)>=0?'+':''}${fmt(mean(gain),1)} จุด`:''}</small>`
+      : `<div class="v">–</div><small>ยังไม่มีข้อมูลก่อน/หลังเรียน</small>`;
+    return `<div class="kpi ${m}"><h3>${MODE_NAME[m]}</h3>${body}</div>`;
+  }).join('');
+  /* สาเหตุที่ผิดบ่อย */
+  const rc={}; logs.filter(l=>l.student>0).forEach(l=>Object.entries(l.reasons||{}).forEach(([r,n])=>rc[r]=(rc[r]||0)+n));
+  const top=Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,6), mx=top.length?top[0][1]:1;
+  $('#errBars').innerHTML=top.length?top.map(([r,n])=>`<div>${r}</div><div class="t"><div class="b" style="width:${Math.max(4,n/mx*100)}%"></div></div><div class="n" style="text-align:right;font-variant-numeric:tabular-nums">${n}</div>`).join(''):'<div class="note" style="grid-column:1/-1;margin:0">ยังไม่มีข้อมูล</div>';
+  /* ตารางห้อง */
+  const by3=['run','slide','jump'].map(m=>modeBy(logs,m));
+  let rows='';
+  for(let s=1;s<=N_STUDENTS;s++){
+    let cells='';
+    by3.forEach(by=>{ const r=by[s]||{}, p=r.pre?r.pre.pct:null, q=r.post?r.post.pct:null;
+      cells+=`<td class="n">${p==null?'–':p}</td><td class="n">${q==null?'–':q}</td>`+dlt(p!=null&&q!=null?q-p:null); });
+    rows+=`<tr><td class="n">${s}</td>${cells}</tr>`;
+  }
+  $('#classTable').innerHTML=`<table><thead><tr><th class="n">เลขที่</th>${['วิ่ง','สไลด์','กระโดด'].map(n=>`<th class="n">${n} ก่อน</th><th class="n">${n} หลัง</th><th class="n">${n} ±</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <div class="note">ร้อยละท่าถูกต้อง นับจากผลล่าสุดของแต่ละคนในแต่ละช่วง ไม่นับเลขที่ 0</div>`;
+  /* ข้อมูลดิบ */
+  const list=logs.slice(-60).reverse().map(l=>`<tr><td>${l.ts}</td><td class="n">${l.student}</td><td>${PHASE_NAME[l.phase]}</td><td>${MODE_NAME[l.mode]}</td><td>${LV_NAME[l.level]||'ปกติ'}</td><td class="n">${l.correct}/${l.attempts}</td><td class="n">${l.pct}%</td><td>${l.input==='sim'?'จำลอง':'กล้อง'}</td></tr>`).join('');
+  $('#logList').innerHTML=logs.length?`<table><thead><tr><th>เวลา</th><th class="n">เลขที่</th><th>ช่วง</th><th>โหมด</th><th>ระดับ</th><th class="n">ถูก</th><th class="n">ร้อยละ</th><th>ที่มา</th></tr></thead><tbody>${list}</tbody></table><div class="note">แสดง 60 รายการล่าสุด (ส่งออก CSV ได้ครบทั้งหมด)</div>`:'<div class="note">ยังไม่มีบันทึก</div>';
+  buildStudent(+$('#selStuView').value||1);
+}
+/* กราฟพัฒนาการรายบุคคล: ร้อยละท่าถูกต้องของแต่ละครั้งที่เล่น แยกตามโหมด */
+function buildStudent(s){
+  const logs=store.get('mg_logs_v1',[]).filter(l=>l.student===s).sort((a,b)=>a.id-b.id);
+  if(!logs.length){ $('#stuChart').innerHTML='<div class="note">เลขที่นี้ยังไม่มีบันทึก</div>'; $('#stuTable').innerHTML=''; return; }
+  const W=700,H=240,L=38,R=96,T=34,B=28, pw=W-L-R, ph=H-T-B;
+  const ser=['run','slide','jump'].map(m=>({m,pts:logs.filter(l=>l.mode===m)}));
+  const maxN=Math.max(2,...ser.map(x=>x.pts.length));
+  const X=i=>L+(maxN<=1?0:i/(maxN-1))*pw, Y=v=>T+ph-(v/100)*ph;
+  let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:40vh" role="img" aria-label="ร้อยละท่าถูกต้องของเลขที่ ${s} แต่ละครั้งที่เล่น">`;
+  [0,50,100].forEach(v=>{ g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#d6dccf" stroke-width="1"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="#586a5f">${v}</text>`; });
+  g+=`<text x="${L}" y="${H-6}" font-size="12" fill="#586a5f">ครั้งที่เล่น (เรียงตามเวลา แยกตามโหมด)</text>`;
+  let lx=L;
+  ser.forEach(x=>{ g+=`<circle cx="${lx+6}" cy="14" r="6" fill="${MODE_COL[x.m]}"/><text x="${lx+18}" y="18" font-size="13" font-weight="700" fill="#0b2a1d">${MODE_NAME[x.m]}</text>`; lx+=140; });
+  ser.forEach(x=>{
+    if(!x.pts.length) return;
+    const d=x.pts.map((l,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(l.pct).toFixed(1)}`).join(' ');
+    g+=`<path d="${d}" fill="none" stroke="${MODE_COL[x.m]}" stroke-width="3" stroke-linejoin="round"/>`;
+    x.pts.forEach((l,i)=>{ g+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(l.pct).toFixed(1)}" r="5" fill="${MODE_COL[x.m]}" stroke="#fbfaf3" stroke-width="2"><title>${MODE_NAME[x.m]} ${PHASE_NAME[l.phase]} ${l.pct}%</title></circle>`; });
+  });
+  /* ป้ายค่าล่าสุดท้ายเส้น: เรียงตามความสูงแล้วดันห่างกันอย่างน้อย 15 พิกเซล กันตัวเลขซ้อนกัน */
+  const ends=ser.filter(x=>x.pts.length).map(x=>({x:X(x.pts.length-1)+9,y:Y(x.pts[x.pts.length-1].pct)+4,t:x.pts[x.pts.length-1].pct+'%',c:MODE_COL[x.m]})).sort((a,b)=>a.y-b.y);
+  for(let i=1;i<ends.length;i++) if(ends[i].y-ends[i-1].y<15) ends[i].y=ends[i-1].y+15;
+  ends.forEach(e=>{ g+=`<text x="${e.x}" y="${e.y}" font-size="13" font-weight="700" fill="#0b2a1d"><tspan fill="${e.c}">● </tspan>${e.t}</text>`; });
+  g+='</svg>';
+  $('#stuChart').innerHTML=g;
+  $('#stuTable').innerHTML=`<table><thead><tr><th>เวลา</th><th>ช่วง</th><th>โหมด</th><th class="n">ถูก</th><th class="n">ร้อยละ</th><th>สาเหตุที่พบ</th></tr></thead><tbody>${logs.slice().reverse().map(l=>`<tr><td>${l.ts}</td><td>${PHASE_NAME[l.phase]}</td><td>${MODE_NAME[l.mode]}</td><td class="n">${l.correct}/${l.attempts}</td><td class="n">${l.pct}%</td><td style="white-space:normal">${Object.entries(l.reasons||{}).map(([r,n])=>r+' ×'+n).join(', ')||'–'}</td></tr>`).join('')}</tbody></table>`;
+}
+function printStudent(){
+  const s=+$('#selStuView').value, logs=store.get('mg_logs_v1',[]);
+  const rows=['run','slide','jump'].map(m=>{ const r=modeBy(logs,m)[s]||{}, p=r.pre?r.pre.pct:null, q=r.post?r.post.pct:null;
+    return `<tr><td>${MODE_NAME[m]}</td><td>${p==null?'–':p+'%'}</td><td>${q==null?'–':q+'%'}</td><td>${p!=null&&q!=null?(q-p>0?'+':'')+(q-p)+' จุด':'–'}</td></tr>`; }).join('');
+  const rc={}; logs.filter(l=>l.student===s).forEach(l=>Object.entries(l.reasons||{}).forEach(([r,n])=>rc[r]=(rc[r]||0)+n));
+  const tips=Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([r])=>`<li><b>${r}</b> ${TIPS[r]||''}</li>`).join('')||'<li>ยังไม่มีข้อมูลสำหรับให้คำแนะนำ</li>';
+  const tdst='style="border:1px solid #000;padding:6px 12px"';
+  $('#printArea').innerHTML=`<h2>ใบสรุปผลการเล่น Motion Game</h2><p>นักเรียนเลขที่ ${s} ชั้นประถมศึกษาปีที่ 3/2 โรงเรียนบ้านบึง · พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH')}</p>
+  <table style="border-collapse:collapse;width:100%"><thead><tr><th ${tdst}>โหมด</th><th ${tdst}>ก่อนเรียน (ร้อยละท่าถูก)</th><th ${tdst}>หลังเรียน (ร้อยละท่าถูก)</th><th ${tdst}>เปลี่ยนแปลง</th></tr></thead><tbody>${rows.replace(/<td>/g,'<td '+tdst+'>')}</tbody></table>
+  <h3>สิ่งที่ควรฝึกต่อ</h3><ul>${tips}</ul><p style="font-size:13px">ผลจากเกมเป็นข้อมูลประกอบ ใช้ดูพัฒนาการของท่าทางเท่านั้น ไม่ใช่คะแนนสอบ เกมไม่บันทึกภาพหรือวิดีโอของนักเรียน</p>`;
+  window.print();
+}
+function exportCsv(){
+  const logs=store.get('mg_logs_v1',[]);
+  const head=['วันที่เวลา','เลขที่','ช่วง','โหมด','ระดับ','จำนวนครั้ง','ท่าถูกต้อง','ร้อยละท่าถูกต้อง','คะแนน','ถูกต่อเนื่องสูงสุด','สาเหตุที่พบ','ที่มาของข้อมูล'];
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const lines=[head.map(q).join(',')].concat(logs.map(l=>[l.ts,l.student,PHASE_NAME[l.phase],MODE_NAME[l.mode],LV_NAME[l.level]||'ปกติ',l.attempts,l.correct,l.pct,l.score,l.bestStreak==null?'':l.bestStreak,
+    Object.entries(l.reasons||{}).map(([r,n])=>r+' x'+n).join('; '), l.input==='sim'?'จำลอง':'กล้อง'].map(q).join(',')));
+  download(new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'motion-game-results.csv');
+}
+function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+function flash(msg,err=false){ setStatus(msg,err,true); setTimeout(()=>setStatus(''),4000); }
+
+/* ---------- ผูกปุ่ม ---------- */
+(function init(){
+  /* หน้าปก: ตัวอักษรเด้งเข้ามาทีละตัว → วิ่งขีดเส้น → by ครูจ๊อบ → ปุ่มเริ่มใช้งาน */
+  const gr=t=>{ try{ return Array.from(new Intl.Segmenter('th',{granularity:'grapheme'}).segment(t),x=>x.segment); }catch(e){ return t.match(/.[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]*/gu)||[t]; } };
+  const spans=(t,t0,step,cls)=>gr(t).map((g,i)=>`<span class="lt ${cls||''}" style="--d:${(t0+i*step).toFixed(2)}s">${g===' '?'&nbsp;':g}</span>`).join('');
+  $('#ttl1').innerHTML=spans('MOTION',0.25,0.08); $('#ttl2').innerHTML=spans('GAME',0.8,0.08);
+  $('#by').innerHTML=spans('by ',2.2,0.07)+'<span class="nm">'+spans('ครูจ๊อบ',2.45,0.09)+'</span>';
+  const pIntro=$('#pIntro'); let introReady=false;
+  const readyT=setTimeout(()=>{ introReady=true; },4300);
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){ introReady=true; pIntro.classList.add('skip'); }
+  const skipIntro=()=>{ clearTimeout(readyT); introReady=true; pIntro.classList.add('skip'); };
+  let leaving=false;
+  const startApp=()=>{ if(S.screen!=='intro'||leaving) return; leaving=true; audio(); sfx.go(); pIntro.classList.add('leave'); setTimeout(()=>{ S.screen='menu'; show('pMenu'); pIntro.classList.remove('leave'); },380); };
+  pIntro.addEventListener('click',e=>{ if(e.target.closest('#btnStart')) startApp(); else if(!introReady) skipIntro(); });
+  addEventListener('keydown',e=>{ if(S.screen!=='intro') return; if(!introReady) skipIntro(); else if(e.key==='Enter'||e.key===' '){ e.preventDefault(); startApp(); } },true);
+  window.__intro={skip:skipIntro,start:startApp};
+  const sel=$('#selStudent'); sel.innerHTML='<option value="0">ทดลองเล่น (ไม่บันทึก)</option>'+Array.from({length:N_STUDENTS},(_,i)=>`<option value="${i+1}">เลขที่ ${i+1}</option>`).join('');
+  const sv=$('#selStuView'); sv.innerHTML=Array.from({length:N_STUDENTS},(_,i)=>`<option value="${i+1}">เลขที่ ${i+1}</option>`).join('');
+  sv.onchange=()=>buildStudent(+sv.value);
+  const updateBib=()=>{ const v=+sel.value; $('#bib').classList.toggle('trial',v===0); $('#bibNo').textContent=v===0?'ฝึก':v; };
+  sel.onchange=updateBib; updateBib(); updateRoom();
+  $$('.tab').forEach(t=>t.onclick=()=>{ $$('.tab').forEach(x=>x.setAttribute('aria-selected',x===t?'true':'false')); $$('.tabpane').forEach(p=>p.classList.toggle('show',p.id===t.dataset.tab)); });
+  $('#btnPrint').onclick=printStudent;
+  $('#btnBackup').onclick=()=>download(new Blob([JSON.stringify({v:1,exported:new Date().toISOString(),logs:store.get('mg_logs_v1',[]),settings:set},null,1)],{type:'application/json'}),'motion-game-backup.json');
+  $('#fileRestore').onchange=async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    try{
+      const j=JSON.parse(await f.text()); if(!Array.isArray(j.logs)) throw new Error('bad');
+      const cur=store.get('mg_logs_v1',[]), ids=new Set(cur.map(l=>l.id)); let add=0;
+      const num=v=>Number.isFinite(+v)?+v:0, okR={}; Object.keys(TIPS).forEach(k=>okR[k]=1);
+      j.logs.forEach(l=>{
+        if(!l||typeof l.id!=='number'||ids.has(l.id)||!MODE_NAME[l.mode]||!PHASE_NAME[l.phase]) return;
+        const st=num(l.student); if(st<0||st>N_STUDENTS) return;
+        const rs={}; Object.entries(l.reasons||{}).forEach(([k,n])=>{ if(okR[k]) rs[k]=num(n); });
+        cur.push({id:l.id,ts:String(l.ts||'').replace(/[^0-9:\- ]/g,'').slice(0,19),student:st,phase:l.phase,mode:l.mode,attempts:num(l.attempts),correct:num(l.correct),pct:clamp(num(l.pct),0,100),score:num(l.score),reasons:rs,input:l.input==='sim'?'sim':'camera',level:LV_NAME[l.level]?l.level:'normal',bestStreak:num(l.bestStreak)});
+        ids.add(l.id); add++;
+      });
+      cur.sort((a,b)=>a.id-b.id); store.set('mg_logs_v1',cur); buildLogs(); updateRoom(); flash(`นำเข้าแล้ว เพิ่ม ${add} รายการ`);
+    }catch(err){ flash('ไฟล์สำรองไม่ถูกต้อง ใช้ไฟล์ .json ที่ส่งออกจากเกมนี้',true); }
+    e.target.value='';
+  };
+  $('#btnNext').onclick=()=>{ const n=S.student+1; $('#selStudent').value=String(n); S.student=n; updateBib(); hideAll(); beginCalibration(); };
+  $('#selCam').onchange=()=>{ if(camReady) closeCamera(); };
+  refreshCamList();
+  $$('.mode').forEach(b=>b.onclick=()=>startFlow(b.dataset.mode));
+  $('#btnSettings').onclick=()=>{ buildSettings(); show('pSettings'); };
+  $('#btnLogs').onclick=()=>{ buildLogs(); show('pLogs'); };
+  $('#btnHelp').onclick=()=>show('pHelp');
+  $$('[data-close]').forEach(b=>b.onclick=()=>show('pMenu'));
+  $('#btnSetReset').onclick=()=>{ set=Object.assign({},DEFAULTS); saveSet(); buildSettings(); };
+  $('#btnCsv').onclick=exportCsv;
+  let clr=0; $('#btnClear').onclick=function(){
+    if(!clr){ clr=1; this.textContent='กดอีกครั้งเพื่อยืนยันการลบ'; setTimeout(()=>{clr=0;this.textContent='ล้างข้อมูลทั้งหมด';},4000); }
+    else { store.set('mg_logs_v1',[]); clr=0; this.textContent='ล้างข้อมูลทั้งหมด'; buildLogs(); updateRoom(); }
+  };
+  $('#btnAgain').onclick=()=>{ hideAll(); beginCalibration(); };
+  $('#btnMenu').onclick=backToMenu;
+  $('#btnExit').onclick=backToMenu;
+  $('#btnRecal').onclick=()=>{ beginCalibration(); };
+  addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&S.screen==='menu'&&!$('#pMenu').classList.contains('show')){ show('pMenu'); return; }
+    if(e.key==='Escape'&&(S.screen!=='menu'&&S.screen!=='intro')) { if(S.screen==='result') backToMenu(); else backToMenu(); return; }
+    if(S.input==='sim' && (S.screen==='play'||S.screen==='count'||S.screen==='calibrate')){
+      if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='c'||e.key==='C'){ sim.keys[e.key]=true; e.preventDefault(); }
+      if(e.key===' '){ sim.doJump('both'); e.preventDefault(); }
+      if(e.key==='j'||e.key==='J'){ sim.doJump('one'); }
+      if(e.key==='q'||e.key==='Q'){ sim.doPair('R','L'); }
+      if(e.key==='e'||e.key==='E'){ sim.doPair('L','R'); }
+      if(e.key==='r'||e.key==='R'){ sim.doPair('R','R'); }
+    }
+  });
+  addEventListener('keyup',e=>{ delete sim.keys[e.key]; });
+  resize(); addEventListener('resize',()=>{cfc.width=innerWidth;cfc.height=innerHeight;}); requestAnimationFrame(loop);
+})();
+
+/* ส่วนเชื่อมสำหรับทดสอบอัตโนมัติ */
+window.__mg={skipIntro:()=>{ S.screen='menu'; show('pMenu'); },S,sim,set,tick,startFlow,beginCalibration,startPlay,get ASPECT(){return ASPECT;},get eff(){return eff;},buildEff,LEVELS,OneEuro,render,MODES,store,buildLogs,buildStudent,updateRoom,finishGame};
+</script>
+</body>
+</html>
