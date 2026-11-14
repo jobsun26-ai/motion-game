@@ -48,7 +48,23 @@ select,input[type=text]{font:inherit;font-weight:600;padding:9px 12px;border:2px
 .seg input:checked+span{background:var(--turf);color:#fff}
 .seg input:focus-visible+span{outline:3px solid var(--whistle);outline-offset:-3px}
 .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 12px}
-@media(max-width:760px){.modes{grid-template-columns:1fr}.head{flex-direction:column}}
+@media(max-width:760px) and (orientation:portrait){.modes{grid-template-columns:1fr}.head{flex-direction:column}}
+/* โทรศัพท์แนวนอน (จอเตี้ย): ย่อเมนูให้พอดีหนึ่งหน้าจอ */
+@media (max-height:520px){
+  .sheet{padding:10px 14px;max-height:98vh;border-radius:12px}
+  h1{font-size:24px} h1 small{display:none}
+  .bib{display:none}
+  .row{gap:8px;margin:6px 0} .f{font-size:11px;gap:2px}
+  select{padding:5px 8px;min-width:0;font-size:13px} .seg span{padding:5px 9px} .seg label{font-size:12px}
+  .btn{padding:6px 11px;font-size:13px}
+  .modes{gap:8px;margin:8px 0}
+  .mode{padding:10px 12px 16px;gap:2px 10px} .mode svg{width:40px} .mode b{font-size:17px} .mode span{display:none}
+  .mode::after{bottom:6px}
+  .flag{padding:6px 10px;margin-top:4px} #pMenu .note{display:none}
+  .big-num{font-size:40px} .medal{width:70px}
+  .intro .ttl{font-size:17vh} .intro .by{font-size:8vh} .intro .tag{display:none}
+  .intro .sprint{height:9vh;margin-top:0} .intro .chips{margin-top:2vh} .intro .chip{font-size:12px} .intro .go{margin-top:2.5vh} .intro .go .btn{font-size:18px}
+}
 .mode{position:relative;border:0;border-radius:12px;padding:clamp(12px,2.2vmin,22px);padding-bottom:clamp(20px,3.2vmin,30px);color:#fff;text-align:left;cursor:pointer;font:inherit;
   display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;overflow:hidden;transition:transform .12s,box-shadow .12s;box-shadow:0 4px 0 rgba(0,0,0,.22)}
 .mode:hover{transform:translateY(-2px);box-shadow:0 6px 0 rgba(0,0,0,.22)}
@@ -116,6 +132,10 @@ td.up{color:#0b7a42;font-weight:700} td.dn{color:var(--bad);font-weight:700} td.
 kbd{background:#eef0e6;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-family:inherit;font-size:.92em}
 .hide{display:none!important}
 #printArea{display:none}
+#rotate{display:none;position:fixed;inset:0;z-index:20;background:var(--turf-dk);color:var(--chalk);flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;font-family:var(--disp);font-weight:700;font-size:22px}
+#rotate svg{width:96px;height:96px;stroke:var(--whistle);fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;animation:tilt 2s ease-in-out infinite}
+@keyframes tilt{0%,25%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+@media (orientation:portrait) and (max-width:820px){#rotate{display:flex}}
 @media print{
   html,body{overflow:visible;background:#fff}
   body>*:not(#printArea){display:none!important}
@@ -360,6 +380,7 @@ kbd{background:#eef0e6;border:1px solid var(--line);border-bottom-width:2px;bord
   </div>
 </div>
 
+<div id="rotate" role="alert"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="5"/><path d="M29 50 L35 50"/></svg><div>หมุนโทรศัพท์เป็นแนวนอน<br><span style="font-family:var(--font);font-weight:600;font-size:15px">ถ้าจอไม่หมุน ให้ปิด “ล็อกการหมุนหน้าจอ” ในเครื่องก่อน</span></div></div>
 <div id="printArea"></div>
 
 <script>
@@ -879,7 +900,7 @@ function resize(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   view=containRect(innerWidth,innerHeight,ASPECT);
 }
-addEventListener('resize',resize);
+addEventListener('resize',resize); addEventListener('orientationchange',()=>setTimeout(()=>{resize();syncAspect();},350)); cam.addEventListener('resize',syncAspect);
 
 /* ฉากสนามกีฬา: สนามหญ้าเป็นริ้ว และลู่วิ่งสีอิฐเห็นเป็นมุมมองไปไกล */
 function drawStadium(W,H){
@@ -1013,6 +1034,13 @@ function drawHud(){
    ลูปหลัก
    ============================================================ */
 let lastFrame=0;
+/* โทรศัพท์หมุนจอ: ภาพจากกล้องเปลี่ยนสัดส่วน (ตั้ง↔นอน) ต้องปรับพื้นที่วาดและตั้งค่าท่ายืนใหม่ */
+function syncAspect(){
+  if(!camReady||!cam.videoWidth||!cam.videoHeight) return;
+  const a=cam.videoWidth/cam.videoHeight; if(Math.abs(a-ASPECT)<0.01) return;
+  ASPECT=a; resize(); filt=null; S.body=null;
+  if(S.input==='camera'&&(S.screen==='calibrate'||S.screen==='count'||S.screen==='play')){ beginCalibration(); flash('หมุนจอแล้ว ตั้งค่าท่ายืนใหม่อีกครั้ง'); }
+}
 /* วัดความสว่างภาพจากกล้อง (ภาพย่อ 32×18 พิกเซล) เพื่อเตือนครูเมื่อแสงน้อยหรือจ้าเกินไป */
 const lightCv=document.createElement('canvas'); lightCv.width=32; lightCv.height=18; const lightCx=lightCv.getContext('2d',{willReadFrequently:true});
 let lastLight=0;
@@ -1025,6 +1053,7 @@ function tick(dt){
   if(S.input==='sim'){
     sim.update(dt); S.simT+=dt; S.body=sim.pose(S.simT); S.bodyAge=0; S.tracked=true;
   } else if(landmarker && camReady && cam.readyState>=2){
+    syncAspect();
     S.bodyAge+=dt;
     if(cam.currentTime!==lastVT){
       lastVT=cam.currentTime;
