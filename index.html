@@ -418,9 +418,9 @@ const DEFAULTS = {
   slideCross:1,   // ความเข้มงวดเรื่องไขว้ขา
   jumpFrac:0.15,  // ความสูงที่ต้องลอย (สัดส่วนความยาวขา)
   jumpSync:150,   // ความต่างเวลาสองเท้าที่ยอมรับได้ (มิลลิวินาที)
-  bpm:84,         // จังหวะวิ่ง
-  runRadius:0.32, // ขนาดเป้า (เท่าของลำตัว)
-  minVis:0.4,     // ความมั่นใจต่ำสุดของจุดบนร่างกาย
+  bpm:72,         // จังหวะวิ่ง (เดิม 84 เร็วเกินสำหรับ ป.3)
+  runRadius:0.40, // ขนาดเป้า (เท่าของลำตัว) (เดิม 0.32)
+  minVis:0.5,     // ความมั่นใจต่ำสุดของจุดบนร่างกาย
   skeleton:1,     // แสดงเส้นโครงกระดูก
   sound:1
 };
@@ -436,6 +436,10 @@ const SET_UI = [
   ['minVis','ความมั่นใจต่ำสุดของจุดร่างกาย','ถ้าเกมหยุดบ่อยให้ลดลง',0.2,0.8,0.05],
 ];
 let set = Object.assign({}, DEFAULTS, store.get('mg_settings_v2',{}));
+/* เครื่องที่เคยบันทึกค่าตั้งต้นเดิมของโหมดวิ่งไว้ ให้ใช้ค่าตั้งต้นใหม่ที่ง่ายขึ้น (ค่าที่ครูปรับเองไม่ถูกแตะ) */
+if(set.bpm===84) set.bpm=DEFAULTS.bpm;
+if(set.minVis===0.4) set.minVis=DEFAULTS.minVis;
+if(set.runRadius===0.32) set.runRadius=DEFAULTS.runRadius;
 const saveSet = ()=>store.set('mg_settings_v2',set);
 /* ระดับความยาก: ตัวคูณจากค่าตั้งต้น (ระดับ “ปกติ” = ค่าตามหน้าตั้งค่า) คะแนนต่อครั้งเท่าเดิมทุกระดับ */
 const LEVELS={
@@ -481,7 +485,7 @@ function has(body,ids){ return !!body && ids.every(i=>body.P[i] && body.P[i].v>=
 /* มือถือภาพจากกล้อง: กลับซ้าย-ขวาให้เป็นภาพกระจก แล้วปรับให้เรียบ */
 /* ตัวกรอง One-Euro: นิ่งเมื่อยืนเฉย ๆ แต่ตามทันเมื่อขยับเร็ว (ลดอาการจุดสั่นโดยไม่ทำให้ภาพหน่วง) */
 class OneEuro{
-  constructor(minCut=1.4,beta=7,dcut=1){ this.mc=minCut; this.b=beta; this.dc=dcut; this.x=null; this.dx=0; this.t=null; }
+  constructor(minCut=1.6,beta=10,dcut=1){ this.mc=minCut; this.b=beta; this.dc=dcut; this.x=null; this.dx=0; this.t=null; }
   static a(cut,dt){ const tau=1/(2*Math.PI*cut); return 1/(1+tau/dt); }
   f(v,t){
     if(this.x==null){ this.x=v; this.t=t; return v; }
@@ -491,10 +495,25 @@ class OneEuro{
     return this.x;
   }
 }
-let filt=null;
+let filt=null, prevRaw=null;
+const JUMP_MAX=6;   // ความเร็วสูงสุดที่ยอมรับ (เท่าของความสูงภาพต่อวินาที) เกินนี้ถือว่าโมเดลเดาจุดผิด
 function bodyFromCamera(lms,t){
-  if(!filt) filt=lms.map(()=>({x:new OneEuro(),y:new OneEuro()}));
-  const P=lms.map((l,i)=>({x:filt[i].x.f(1-l.x,t),y:filt[i].y.f(l.y,t),v:(l.visibility==null?1:l.visibility)}));
+  if(!filt){ filt=lms.map(()=>({x:new OneEuro(),y:new OneEuro()})); prevRaw=null; }
+  const dt=prevRaw?(t-prevRaw.t)/1000:0, now=[];
+  const P=lms.map((l,i)=>{
+    const x=1-l.x, y=l.y, v=(l.visibility==null?1:l.visibility);
+    /* กันจุด “กระโดด” ผิดธรรมชาติ (โมเดลเดาแขนขาผิดตำแหน่งชั่วขณะ): ข้ามได้ไม่เกิน 2 เฟรมติดกัน แล้วจึงยอมรับตำแหน่งใหม่ */
+    if(prevRaw&&dt>0&&dt<0.25){
+      const q=prevRaw.P[i];
+      if(q.n<2 && Math.hypot((x-q.x)*ASPECT,y-q.y)/dt>JUMP_MAX && filt[i].x.x!=null){
+        now.push({x:q.x,y:q.y,n:q.n+1});
+        return {x:filt[i].x.x,y:filt[i].y.x,v:0};
+      }
+    }
+    now.push({x,y,n:0});
+    return {x:filt[i].x.f(x,t),y:filt[i].y.f(y,t),v};
+  });
+  prevRaw={t,P:now};
   return buildBody(P,t);
 }
 
@@ -793,7 +812,7 @@ class RunMode extends BaseMode{
     const t=now-this.t0, P=body.P, c=this.cal;
     while(this.nextTick<=t && this.tickN<this.countIn+this.total){ sfx.tick(this.tickN%2===0); this.tickN++; this.nextTick=this.tickN*this.beat; }
     this.curBeat=null;
-    const wL=-0.35*this.beat, wR=0.40*this.beat;
+    const wL=-0.45*this.beat, wR=0.50*this.beat;   // ช่วงเวลารับจังหวะ (ผ่อนให้มาก่อน/ช้าได้มากขึ้น)
     const sideIdx=(joint,side)=> joint==='wr'?(side==='L'?15:16):(side==='L'?25:26);
     for(const b of this.beats){
       if(b.judged) continue;
@@ -807,7 +826,7 @@ class RunMode extends BaseMode{
       }
       if(t>b.t+wR){
         b.judged=true;
-        const tol=Math.min(300,0.45*this.beat);
+        const tol=Math.min(400,0.55*this.beat);
         let reason='';
         if(b.handT!=null&&b.kneeT!=null&&Math.abs(b.handT-b.kneeT)<=tol){ b.res='ok'; this.record(true,'',now); }
         else{
@@ -1149,8 +1168,9 @@ function camErrText(e){
 async function openStream(){
   const picked=$('#selCam').value;
   const tries=[];
-  if(picked) tries.push({deviceId:{exact:picked},width:{ideal:1280},height:{ideal:720}});
-  tries.push({width:{ideal:1280},height:{ideal:720},facingMode:'user'});
+  /* 960×540 ที่ 30 เฟรม/วินาที: กล้องส่งภาพถี่และหน่วงน้อยกว่า 720p โดยเฉพาะเว็บแคมราคาถูกและห้องแสงน้อย */
+  if(picked) tries.push({deviceId:{exact:picked},width:{ideal:960},height:{ideal:540},frameRate:{ideal:30}});
+  tries.push({width:{ideal:960},height:{ideal:540},frameRate:{ideal:30},facingMode:'user'});
   tries.push({width:{ideal:640},height:{ideal:480}});
   tries.push(true);
   let last;
@@ -1193,8 +1213,8 @@ async function ensureCamera(){
     const mod=await import(MP_BASE+'/vision_bundle.mjs');
     const fileset=await mod.FilesetResolver.forVisionTasks(MP_BASE+'/wasm');
     const buf=await getModelBuf();
-    const opts=d=>({baseOptions:buf?{modelAssetBuffer:buf,delegate:d}:{modelAssetPath:MODEL_URL,delegate:d},runningMode:'VIDEO',numPoses:2,
-      minPoseDetectionConfidence:.5,minPosePresenceConfidence:.5,minTrackingConfidence:.5});
+    const opts=d=>({baseOptions:buf?{modelAssetBuffer:buf,delegate:d}:{modelAssetPath:MODEL_URL,delegate:d},runningMode:'VIDEO',numPoses:1,   // ตรวจคนเดียว: เร็วขึ้นราวเท่าตัว และโครงกระดูกไม่สลับไปจับคนข้างหลัง
+      minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,minTrackingConfidence:.6});
     try{ landmarker=await mod.PoseLandmarker.createFromOptions(fileset,opts('GPU')); }
     catch(e){ landmarker=await mod.PoseLandmarker.createFromOptions(fileset,opts('CPU')); }
     setStatus('');
@@ -1480,6 +1500,7 @@ function flash(msg,err=false){ setStatus(msg,err,true); setTimeout(()=>setStatus
 })();
 
 /* ส่วนเชื่อมสำหรับทดสอบอัตโนมัติ */
+window.__mgBody=bodyFromCamera;
 window.__mg={skipIntro:()=>{ S.screen='menu'; show('pMenu'); },S,sim,set,tick,startFlow,beginCalibration,startPlay,get ASPECT(){return ASPECT;},get eff(){return eff;},buildEff,LEVELS,OneEuro,render,MODES,store,buildLogs,buildStudent,updateRoom,finishGame};
 </script>
 </body>
