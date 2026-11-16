@@ -1137,21 +1137,55 @@ async function getModelBuf(){
     return new Uint8Array(ab);
   }catch(e){ return null; }
 }
+function camErrText(e){
+  const n=(e&&e.name)||'';
+  if(!window.isSecureContext||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return 'เบราว์เซอร์นี้เปิดกล้องไม่ได้ ให้เปิดลิงก์ใน Chrome หรือ Edge โดยตรง (ไม่ใช่ในแอป LINE/Facebook) และใช้ลิงก์ที่ขึ้นต้นด้วย https';
+  if(n==='NotAllowedError'||n==='SecurityError') return 'ยังไม่ได้อนุญาตให้ใช้กล้อง กดรูปกุญแจหรือกล้องหน้าช่องที่อยู่เว็บ เลือก “อนุญาต” แล้วรีเฟรชหน้า (Windows: ตรวจ ตั้งค่า > ความเป็นส่วนตัว > กล้อง ให้เปิดใช้กับเบราว์เซอร์)';
+  if(n==='NotReadableError'||n==='AbortError') return 'กล้องถูกโปรแกรมอื่นใช้อยู่ (เช่น Zoom, Teams, LINE หรือแท็บอื่น) ปิดโปรแกรมนั้นแล้วลองใหม่';
+  if(n==='NotFoundError'||n==='OverconstrainedError') return 'ไม่พบกล้องที่เลือก ลองเลือกกล้องอื่นในรายการ หรือถอดแล้วเสียบกล้องใหม่';
+  return 'เปิดกล้องไม่ได้ ('+(n||'ไม่ทราบสาเหตุ')+')';
+}
+/* ลองขอกล้องหลายแบบ: กล้องที่เลือก → ค่าปกติ → ความละเอียดต่ำ → ไม่กำหนดอะไรเลย (กันกรณี deviceId เก่าหรือกล้องไม่รองรับ 720p) */
+async function openStream(){
+  const picked=$('#selCam').value;
+  const tries=[];
+  if(picked) tries.push({deviceId:{exact:picked},width:{ideal:1280},height:{ideal:720}});
+  tries.push({width:{ideal:1280},height:{ideal:720},facingMode:'user'});
+  tries.push({width:{ideal:640},height:{ideal:480}});
+  tries.push(true);
+  let last;
+  for(const v of tries){
+    try{ return await navigator.mediaDevices.getUserMedia({video:v,audio:false}); }
+    catch(e){ last=e; console.warn('getUserMedia',v,e); if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError')) break; }
+  }
+  throw last;
+}
 async function ensureCamera(){
   if(camReady && landmarker) return true;
   try{
     setStatus('กำลังขอใช้กล้อง… กด “อนุญาต” ที่เบราว์เซอร์',false,true);
     if(!camReady){
-      const picked=$('#selCam').value;
-      const vc=picked?{deviceId:{exact:picked},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720},facingMode:'user'};
-      const stream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
-      cam.srcObject=stream; await cam.play();
+      if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('no-mediadevices');
+      const stream=await openStream();
+      cam.srcObject=stream; cam.muted=true;
+      try{ await cam.play(); }catch(pe){ await new Promise(r=>setTimeout(r,300)); await cam.play(); }
+      for(let k=0;k<40&&!(cam.videoWidth>0);k++) await new Promise(r=>setTimeout(r,50));
+      if(!(cam.videoWidth>0)){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(_){} cam.srcObject=null; const er=new Error('no-frames'); er.name='NotReadableError'; throw er; }
       ASPECT=(cam.videoWidth/cam.videoHeight)||16/9; camReady=true; resize();
       await refreshCamList();
       try{ const id=stream.getVideoTracks()[0].getSettings().deviceId; if(id) $('#selCam').value=id; }catch(e){}
     }
   }catch(e){
-    setStatus('เปิดกล้องไม่ได้: '+(e&&e.name==='NotAllowedError'?'ยังไม่ได้อนุญาตให้ใช้กล้อง':'ไม่พบกล้องหรือกล้องถูกใช้งานอยู่')+' — ลองโหมด “ทดลองไม่มีกล้อง” ได้',true);
+    console.error(e);
+    let msg=camErrText(e);
+    try{ /* ไม่มีกล้องในเครื่องเลย (เช่น คอมตั้งโต๊ะที่ไม่ได้เสียบเว็บแคม) ให้บอกตรง ๆ */
+      const n=(e&&e.name)||'';
+      if(n!=='NotAllowedError'&&n!=='SecurityError'&&navigator.mediaDevices&&navigator.mediaDevices.enumerateDevices){
+        const cams=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+        if(!cams.length) msg='ไม่พบกล้องในเครื่องนี้ ให้เสียบเว็บแคม (USB) หรือใช้โน้ตบุ๊ก/แท็บเล็ตที่มีกล้อง แล้วรีเฟรชหน้า';
+      }
+    }catch(_){}
+    setStatus(msg+' — หรือลองโหมด “ทดลองไม่มีกล้อง”',true);
     return false;
   }
   try{
