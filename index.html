@@ -794,7 +794,7 @@ class JumpMode extends BaseMode{
 /* ---- วิ่งตามจังหวะ ---- */
 class RunMode extends BaseMode{
   constructor(cal){
-    super(cal); this.key='run'; this.title='วิ่งตามจังหวะ'; this.need=[11,12,23,24,15,16,25,26];
+    super(cal); this.key='run'; this.title='วิ่งตามจังหวะ'; this.need=[11,12,23,24];   // ใช้แค่ลำตัวตัดสินว่า “เห็นตัว” — มือ/เข่าที่ถูกบังชั่วขณะไม่ทำให้เกมหยุด (ตอนตัดสินเป้ายังตรวจความชัดของมือและเข่ารายจุด)
     this.beat=60000/eff.bpm; this.countIn=4; this.total=eff.rounds*2;
     const c=cal, hx=0.95*c.T/ASPECT, kx=0.38*c.T/ASPECT;
     this.tg={
@@ -822,7 +822,8 @@ class RunMode extends BaseMode{
         if(hP.v>=set.minVis && dist(hP,this.tg.hand[b.hs])<=this.r && b.handT==null) b.handT=t;
         if(kP.v>=set.minVis && dist(kP,this.tg.knee[b.ks])<=this.r && b.kneeT==null) b.kneeT=t;
         const sameK=P[sideIdx('kn',b.hs)];                     // เข่าข้างเดียวกับมือ = สลับข้างผิด
-        if(sameK.v>=set.minVis && dist(sameK,this.tg.knee[b.hs])<=this.r) b.wrong=true;
+        /* นับเฉพาะช่วงใกล้จังหวะ: ต้นช่วงเข่าของจังหวะก่อนหน้า (ข้างเดียวกันนี้) อาจยังไม่ลง จะถูกเข้าใจผิดว่าสลับข้างผิด */
+        if(t>=b.t-0.2*this.beat && sameK.v>=set.minVis && dist(sameK,this.tg.knee[b.hs])<=this.r) b.wrong=true;
       }
       if(t>b.t+wR){
         b.judged=true;
@@ -1135,7 +1136,7 @@ async function refreshCamList(){
     const sel=$('#selCam'), wrap=$('#camPickWrap');
     if(devs.length<2){ wrap.style.display='none'; return; }
     const cur=sel.value;
-    sel.innerHTML=devs.map((d,i)=>`<option value="${d.deviceId}">${d.label||('กล้อง '+(i+1))}</option>`).join('');
+    sel.textContent=''; devs.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('กล้อง '+(i+1)); sel.append(o); });
     if(devs.some(d=>d.deviceId===cur)) sel.value=cur;
     wrap.style.display='';
   }catch(e){}
